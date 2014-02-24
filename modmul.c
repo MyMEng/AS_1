@@ -8,6 +8,12 @@ Perform stage 1:
 - then write the ciphertext c to stdout.
 */
 
+// typedef struct {
+//   char N[IN_BUFF_SIZE];
+//   char e[IN_BUFF_SIZE];
+//   char m[IN_BUFF_SIZE];
+// } mpz_t;
+
 // read in line of input with restriction to 256 characters
 static int readLine (char *buffer, size_t buffSize) {
 
@@ -47,21 +53,23 @@ void stage1() {
   // fill in this function with solution
 
   // set the buffer for input for 256 characters + new line character
-  char readBuffer[257];
+  // remember 3-tuple
+  char readBuffer[3][IN_BUFF_SIZE];
   int feedback;
-  bool inputAvailable = true;
+  int inputAvailable = 1;
 
   while ( inputAvailable ) {
     // for 3-tuple --- N, e, m
     for (int i = 0; i < 3; ++i)
     {
-      feedback = getLine ( readBuffer, sizeof ( readBuffer ) );
+      feedback = readLine ( readBuffer[i], sizeof ( readBuffer ) );
       if ( feedback == INPUT_NO )
       {
-        fprintf( stderr, "Couldn't read in a line.\n" );
+        // fprintf( stderr, "Couldn't read in a line.\n" );
         // Exit the program ???
         // Or just finish reading
-        input inputAvailable = false;
+        inputAvailable = 0;
+        break;
       }
       else if ( feedback == INPUT_LONG )
       {
@@ -71,10 +79,15 @@ void stage1() {
       }
       else if ( feedback == INPUT_YES )
       {
-        fprintf( stdout, "Input:\n%s", readBuffer );
-        // Memorize line ???
+        // fprintf( stdout, "%s\n", readBuffer );
+        // Memorize line ??? -> DONE
+        // do_operation on numbers with GMP
       }
     }
+    // fprintf( stdout, "%s\n", readBuffer[0] );
+    // fprintf( stdout, "%s\n", readBuffer[1] );
+    // fprintf( stdout, "%s\n", readBuffer[2] );
+    // fprintf( stdout, "DONE\n");
   }
 
 
