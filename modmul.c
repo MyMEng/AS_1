@@ -48,6 +48,22 @@ static int readLine (char *buffer, size_t buffSize) {
   return INPUT_YES;
 }
 
+
+// how to quickly do exponentiation mod n
+void readIn ( mpz_t rop, const char *inputStr, int base ) {
+
+  int check = mpz_set_str (rop, inputStr, base);
+
+  // check validity of input
+  if ( check == -1 )
+  {
+    // couldn't read number in
+    fprintf( stderr, "Could not import hex into mpz_t.\n" );
+  } // else OK
+
+}
+
+
 void stage1() {
 
   // fill in this function with solution
@@ -58,6 +74,12 @@ void stage1() {
   int feedback;
   int inputAvailable = 1;
   int threeAgrees = 0;
+
+  mpz_t rop[3];
+  for (int i = 0; i < 3; ++i)
+  {
+    mpz_init( rop[i] );
+  }
 
   while ( inputAvailable ) {
     // for 3-tuple --- N, e, m
@@ -91,14 +113,28 @@ void stage1() {
 
     if ( threeAgrees )
     {
-        fprintf( stdout, "%s\n", readBuffer[0] );
-        fprintf( stdout, "%s\n", readBuffer[1] );
-        fprintf( stdout, "%s\n", readBuffer[2] );
+        // fprintf( stdout, "%s\n", readBuffer[0] );
+        // fprintf( stdout, "%s\n", readBuffer[1] );
+        // fprintf( stdout, "%s\n", readBuffer[2] );
+
         // do_operation on numbers with GMP
+        for (int i = 0; i < 3; ++i)
+        {
+          readIn( rop[i], readBuffer[i], 16 );
+          gmp_printf( "%Zd \n", rop[i] );
+        }
+
     }
 
   }
 
+  // sanity check
+  // if you want check what is inside
+
+  for ( int i = 0; i < 3; ++i )
+  {
+    mpz_clear( rop[i] );
+  }
 
 }
 
