@@ -57,9 +57,11 @@ void stage1() {
   char readBuffer[3][IN_BUFF_SIZE];
   int feedback;
   int inputAvailable = 1;
+  int threeAgrees = 0;
 
   while ( inputAvailable ) {
     // for 3-tuple --- N, e, m
+    threeAgrees = 0;
     for (int i = 0; i < 3; ++i)
     {
       feedback = readLine ( readBuffer[i], sizeof ( readBuffer ) );
@@ -68,26 +70,33 @@ void stage1() {
         // fprintf( stderr, "Couldn't read in a line.\n" );
         // Exit the program ???
         // Or just finish reading
+        threeAgrees = 0;
         inputAvailable = 0;
         break;
       }
       else if ( feedback == INPUT_LONG )
       {
-        fprintf( stderr, "Input line too long.\n" );
+        // fprintf( stderr, "Input line too long.\n" );
         // Exit the program ???
         // Or just ignore the rest of input
+        // ignore whole 3-tuple
+        threeAgrees = 0;
       }
       else if ( feedback == INPUT_YES )
       {
-        // fprintf( stdout, "%s\n", readBuffer );
         // Memorize line ??? -> DONE
-        // do_operation on numbers with GMP
+        threeAgrees = 1;
       }
     }
-    // fprintf( stdout, "%s\n", readBuffer[0] );
-    // fprintf( stdout, "%s\n", readBuffer[1] );
-    // fprintf( stdout, "%s\n", readBuffer[2] );
-    // fprintf( stdout, "DONE\n");
+
+    if ( threeAgrees )
+    {
+        fprintf( stdout, "%s\n", readBuffer[0] );
+        fprintf( stdout, "%s\n", readBuffer[1] );
+        fprintf( stdout, "%s\n", readBuffer[2] );
+        // do_operation on numbers with GMP
+    }
+
   }
 
 
