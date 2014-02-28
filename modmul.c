@@ -129,7 +129,7 @@ void stage1() {
         // gmp_printf( "%Zd \n", output );
 
         // convert to hex back again
-        hexOut = mpz_get_str (hexOut, 16, output);
+        hexOut = mpz_get_str (NULL, 16, output);
         fprintf( stdout, "%s\n", hexOut );
     }
 
@@ -256,6 +256,7 @@ void stage2() {
           mpz_add( output[2], output[2], output[1] );
 
         } else { // comparison < 0 | op0 < op1
+          //  IS IT REALLY NEEDED ??????????????????????????????????????????????
           // op1 - op0
           mpz_sub (output[2], output[1], output[0]);
           // multi
@@ -270,7 +271,7 @@ void stage2() {
         }
 
         // convert to hex back again
-        hexOut = mpz_get_str (hexOut, 16, output[2]);
+        hexOut = mpz_get_str (NULL, 16, output[2]);
         // gmp_printf( "%Zd \n", output );
         fprintf( stdout, "%s\n", hexOut );
     }
