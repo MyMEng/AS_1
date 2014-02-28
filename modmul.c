@@ -250,79 +250,35 @@ void stage3() {
 
   // n-tuple to read in
   int n = 5;
-
-  // set the buffer for input for 256 characters + new line character
-  // remember 3-tuple
   // and output stream
-  char readBuffer[n][IN_BUFF_SIZE];
-  char *hexOut;
-
-  int feedback;
-  int inputAvailable = 1;
-  int threeAgrees = 0;
+  char *hexOut = NULL;
 
   mpz_t rop[n];
-  mpz_t output;
   for (int i = 0; i < n; ++i) {
     mpz_init( rop[i] );
   }
-  mpz_init( output );
-
-  while ( inputAvailable ) {
-    // for 3-tuple --- N, e, m
-    threeAgrees = 0;
-
-    for (int i = 0; i < n; ++i) {
-
-      feedback = readLine ( readBuffer[i], sizeof ( readBuffer ) );
-
-      if ( feedback == INPUT_NO )
-      {
-        // Finish reading
-        threeAgrees = 0;
-        inputAvailable = 0;
-        break; // -> DONE
-      }
-      else if ( feedback == INPUT_LONG )
-      {
-        fprintf( stderr, "Input line too long.\n" );
-        // Ignore the rest of input and whole 3-tuple
-        threeAgrees = 0; // -> DONE
-      }
-      else if ( feedback == INPUT_YES )
-      {
-        // Memorize line
-        threeAgrees = 1; // -> DONE
-      }
-    }
-
-    if ( threeAgrees )
-    {
-        // do_operation on numbers with GMP
-        for (int i = 0; i < n; ++i)
-        {
-          readIn( rop[i], readBuffer[i], 16 );
-          // gmp_printf( "%Zd \n", rop[i] );
-        }
-
-        // raise to power
-        mpz_powm ( output, rop[2], rop[1], rop[0] );
-        // gmp_printf( "%Zd \n", output );
-
-        // convert to hex back again
-        hexOut = mpz_get_str (NULL, 16, output);
-        fprintf( stdout, "%s\n", hexOut );
-    }
-
+  mpz_t output[2];
+  for (int i = 0; i < 2; ++i) {
+    mpz_init( output );
   }
 
-  // sanity check
-  // if you want check what is inside
+  // for 5-tuple
+  int inputAvailable = readTuple( n, rop );
+  while ( inputAvailable == INPUT_YES ) {
+
+      // raise to power
+      mpz_powm ( output, rop[2], rop[1], rop[0] );
+      // gmp_printf( "%Zd \n", output );
+      // convert to hex back again | NOT SAFE ????????????????????????M+ NULL ??
+      hexOut = mpz_get_str (hexOut, INPUT_FORMAT, output);
+      fprintf( stdout, "%s\n", hexOut );
+      // check for another input
+      inputAvailable = readTuple( n, rop );
+  }
 
   for ( int i = 0; i < n; ++i ) {
     mpz_clear( rop[i] );
-  }
-  mpz_clear( output );
+  } mpz_clear( output ); free( hexOut );
 
 }
 
