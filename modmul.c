@@ -63,6 +63,12 @@ void readIn ( mpz_t rop, const char *inputStr, int base ) {
 
 }
 
+// raise to power
+// void expModN ( mpz_t rop, const char *inputStr, int base ) {
+
+//   mpz_powm
+
+// }
 
 void stage1() {
 
@@ -71,21 +77,23 @@ void stage1() {
   // set the buffer for input for 256 characters + new line character
   // remember 3-tuple
   char readBuffer[3][IN_BUFF_SIZE];
+  char *hexOut;
+
   int feedback;
   int inputAvailable = 1;
   int threeAgrees = 0;
 
   mpz_t rop[3];
-  for (int i = 0; i < 3; ++i)
-  {
+  mpz_t output;
+  for (int i = 0; i < 3; ++i) {
     mpz_init( rop[i] );
   }
+  mpz_init( output );
 
   while ( inputAvailable ) {
     // for 3-tuple --- N, e, m
     threeAgrees = 0;
-    for (int i = 0; i < 3; ++i)
-    {
+    for (int i = 0; i < 3; ++i) {
       feedback = readLine ( readBuffer[i], sizeof ( readBuffer ) );
       if ( feedback == INPUT_NO )
       {
@@ -121,8 +129,17 @@ void stage1() {
         for (int i = 0; i < 3; ++i)
         {
           readIn( rop[i], readBuffer[i], 16 );
-          gmp_printf( "%Zd \n", rop[i] );
+          // gmp_printf( "%Zd \n", rop[i] );
         }
+
+        // raise to power
+        mpz_powm ( output, rop[2], rop[1], rop[0] );
+        // gmp_printf( "%Zd \n", output );
+
+        // convert to hex back again
+        hexOut = mpz_get_str (hexOut, 16, output);
+        fprintf( stdout, "%s\n", hexOut );
+
 
     }
 
@@ -131,10 +148,10 @@ void stage1() {
   // sanity check
   // if you want check what is inside
 
-  for ( int i = 0; i < 3; ++i )
-  {
+  for ( int i = 0; i < 3; ++i ) {
     mpz_clear( rop[i] );
   }
+  mpz_clear( output );
 
 }
 
