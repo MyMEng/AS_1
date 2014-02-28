@@ -262,13 +262,16 @@ void stage3() {
     mpz_init( output[i] );
   }
   mpz_t y; mpz_init( y );
+  gmp_randstate_t randomState;
 
   // for 5-tuple
   int inputAvailable = readTuple( n, rop );
   while ( inputAvailable == INPUT_YES ) {
 
     // generate ephemeral key 'y' in range 1 --- q-1  equivalent to(rop[1]-1)
-    mpz_set_ui ( y, 1 );
+    // mpz_set_ui ( y, 1 ); // testing purpose
+    gmp_randinit_default ( randomState );
+    mpz_urandomm ( y, randomState, rop[1] );
 
     // converts his secret message m, into an element m, of G
 
@@ -297,6 +300,7 @@ void stage3() {
   } for (int i = 0; i < 2; ++i) {
     mpz_clear( output[i] );
   }  mpz_clear( y ); free( hexOut );
+  gmp_randclear( randomState );
 
 }
 
