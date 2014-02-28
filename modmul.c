@@ -231,25 +231,47 @@ void stage2() {
         comparison = mpz_cmp ( output[0], output[1] );
         if ( comparison > 0 ) { //  op0 > op1
           // op0 - op1
-          mpz_sub (output[2], output[0], output[1]);
-          
+          mpz_sub ( output[2], output[0], output[1] );
+          // multi
+          mpz_mul ( output[2], output[2], rop[7]);
+          // mod
+          mpz_mod ( output[2], output[2], rop[2]);
+          // reconstruct message
+          //   multi
+          mpz_mul ( output[2], output[2], rop[3] );
+          //   add
+          mpz_add( output[2], output[2], output[1] );
 
-        } else if ( comparison == 0 )) { // op0 = op1
+        } else if ( comparison == 0 ) { // op0 = op1
           // op0 - op1
           mpz_sub (output[2], output[0], output[1]);
+          // multi
+          mpz_mul ( output[2], output[2], rop[7]);
+          // mod
+          mpz_mod ( output[2], output[2], rop[2]);
+          // reconstruct message
+          //   multi
+          mpz_mul ( output[2], output[2], rop[3] );
+          //   add
+          mpz_add( output[2], output[2], output[1] );
 
         } else { // comparison < 0 | op0 < op1
           // op1 - op0
           mpz_sub (output[2], output[1], output[0]);
-
+          // multi
+          mpz_mul ( output[2], output[2], rop[6]);
+          // mod
+          mpz_mod ( output[2], output[2], rop[3]);
+          // reconstruct message
+          //   multi
+          mpz_mul ( output[2], output[2], rop[2] );
+          //   add
+          mpz_add( output[2], output[2], output[0] );
         }
 
-        // raise to power
-        mpz_powm ( output, rop[2], rop[1], rop[0] );
-        // gmp_printf( "%Zd \n", output );
-
         // convert to hex back again
-        hexOut = mpz_get_str (hexOut, 16, output);
+        hexOut = mpz_get_str (hexOut, 16, output[2]);
+        // gmp_printf( "%Zd \n", output );
         fprintf( stdout, "%s\n", hexOut );
     }
 
@@ -263,7 +285,7 @@ void stage2() {
   }
     for (int i = 0; i < 3; ++i)
   {
-    mpz_clear( output );
+    mpz_clear( output[i] );
   }
 
 }
