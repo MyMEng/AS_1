@@ -60,8 +60,46 @@ void readIn ( mpz_t rop, const char *inputStr, int base ) {
     // couldn't read number in
     fprintf( stderr, "Could not import hex into mpz_t.\n" );
   } // else OK
-
 }
+
+
+
+// read n-tuple
+int readTuple ( const int n, mpz_t *reader ) {
+  // set the buffer for input for 256 characters + new line character
+  // remember n-tuple
+  char readBuffer[n][IN_BUFF_SIZE];
+  // feedback from reader
+  int feedback;
+
+  for ( int i = 0; i < n; ++i ) {
+
+    feedback = readLine ( readBuffer[i], sizeof ( readBuffer[i] ) ); // added [i] in sizeof
+
+    if ( feedback == INPUT_NO ) {
+      // Finish reading
+      break; // -> DONE
+    } else if ( feedback == INPUT_LONG ) {
+      // Ignore the rest of input and whole n-tuple
+      fprintf( stderr, "Input line too long.\n" );
+      break;
+    } // else Memorize line
+  }
+
+  if ( feedback == INPUT_YES ) {
+    // do_operation on numbers with GMP
+    for (int i = 0; i < n; ++i) {
+      readIn( reader[i], readBuffer[i], INPUT_FORMAT );
+      // gmp_printf( "%Zd \n", reader[i] );
+    }
+  }
+
+  return feedback;
+}
+
+
+
+
 
 void stage1() {
 
@@ -69,6 +107,149 @@ void stage1() {
 
   // n-tuple to read in
   int n = 3;
+  // and output stream
+  char *hexOut = NULL;
+
+  mpz_t rop[n];
+  for (int i = 0; i < n; ++i) {
+    mpz_init( rop[i] );
+  }
+  mpz_t output;
+  mpz_init( output );
+
+  // for 3-tuple --- N, e, m
+  int inputAvailable = readTuple( n, rop );
+  while ( inputAvailable == INPUT_YES ) {
+
+      // raise to power
+      mpz_powm ( output, rop[2], rop[1], rop[0] );
+      // gmp_printf( "%Zd \n", output );
+
+      // convert to hex back again | NOT SAFE ????????????????????????M+ NULL ??
+      hexOut = mpz_get_str (hexOut, INPUT_FORMAT, output);
+      fprintf( stdout, "%s\n", hexOut );
+
+      // check for another input
+      inputAvailable = readTuple( n, rop );
+  }
+
+  for ( int i = 0; i < n; ++i ) {
+    mpz_clear( rop[i] );
+  } mpz_clear( output ); free( hexOut );
+}
+
+/*
+Perform stage 2:
+
+- read each 9-tuple of N, d, p, q, d_p, d_q, i_p, i_q and c from stdin,
+- compute the RSA decryption m,
+- then write the plaintext m to stdout.
+*/
+
+void stage2() {
+
+  // fill in this function with solution
+
+  // n-tuple to read in
+  int n = 9;
+  // and output stream
+  char *hexOut = NULL;
+  // string comparison
+  int comparison;
+
+  // GMP representation of numbers
+  mpz_t rop[n];
+  mpz_t output[3];
+  for (int i = 0; i < n; ++i) {
+    mpz_init( rop[i] );
+  } for (int i = 0; i < 3; ++i) {
+    mpz_init( output[i] );
+  }
+
+  // for 9-tuple --- N, d, p, q, d_p, d_q, i_p, i_q and c
+  int inputAvailable = readTuple( n, rop );
+  while ( inputAvailable == INPUT_YES ) {
+
+    // use CRT to decrypt message
+    //   calculate first part
+    mpz_powm ( output[0], rop[8], rop[4], rop[2] );
+    //   calculate second part
+    mpz_powm ( output[1], rop[8], rop[5], rop[3] );
+
+    //   check which part is bigger
+    comparison = mpz_cmp ( output[0], output[1] );
+    if ( comparison > 0 ) { //  op0 > op1
+      // op0 - op1
+      mpz_sub ( output[2], output[0], output[1] );
+      // multi
+      mpz_mul ( output[2], output[2], rop[7]);
+      // mod
+      mpz_mod ( output[2], output[2], rop[2]);
+      // reconstruct message
+      //   multi
+      mpz_mul ( output[2], output[2], rop[3] );
+      //   add
+      mpz_add( output[2], output[2], output[1] );
+
+    } else if ( comparison == 0 ) { // op0 = op1
+      // op0 - op1
+      mpz_sub (output[2], output[0], output[1]);
+      // multi
+      mpz_mul ( output[2], output[2], rop[7]);
+      // mod
+      mpz_mod ( output[2], output[2], rop[2]);
+      // reconstruct message
+      //   multi
+      mpz_mul ( output[2], output[2], rop[3] );
+      //   add
+      mpz_add( output[2], output[2], output[1] );
+
+    } else { // comparison < 0 | op0 < op1
+      //  IS IT REALLY NEEDED ??????????????????????????????????????????????????
+      // op1 - op0
+      mpz_sub (output[2], output[1], output[0]);
+      // multi
+      mpz_mul ( output[2], output[2], rop[6]);
+      // mod
+      mpz_mod ( output[2], output[2], rop[3]);
+      // reconstruct message
+      //   multi
+      mpz_mul ( output[2], output[2], rop[2] );
+      //   add
+      mpz_add( output[2], output[2], output[0] );
+    }
+
+    // convert to hex back again
+    // convert to hex back again | NOT SAFE ????????????????????????M+ NULL ????
+    hexOut = mpz_get_str (hexOut, 16, output[2]);
+    // gmp_printf( "%Zd \n", output );
+    fprintf( stdout, "%s\n", hexOut );
+
+    // check for another input
+    inputAvailable = readTuple( n, rop );
+  }
+
+  for ( int i = 0; i < n; ++i ) {
+    mpz_clear( rop[i] );
+  } for (int i = 0; i < 3; ++i) {
+    mpz_clear( output[i] );
+  } free( hexOut );
+}
+
+/*
+Perform stage 3:
+
+- read each 5-tuple of p, q, g, h and m from stdin,
+- compute the ElGamal encryption c = (c_1,c_2),
+- then write the ciphertext c to stdout.
+*/
+
+void stage3() {
+
+  // fill in this function with solution
+
+  // n-tuple to read in
+  int n = 5;
 
   // set the buffer for input for 256 characters + new line character
   // remember 3-tuple
@@ -142,166 +323,6 @@ void stage1() {
     mpz_clear( rop[i] );
   }
   mpz_clear( output );
-
-}
-
-/*
-Perform stage 2:
-
-- read each 9-tuple of N, d, p, q, d_p, d_q, i_p, i_q and c from stdin,
-- compute the RSA decryption m,
-- then write the plaintext m to stdout.
-*/
-
-void stage2() {
-
-  // fill in this function with solution
-
-  // n-tuple to read in
-  int n = 9;
-
-  // set the buffer for input for 256 characters + new line character
-  // remember 9-tuple
-  // and output stream
-  char readBuffer[n][IN_BUFF_SIZE];
-  char *hexOut;
-
-  // flags for reading content in
-  int feedback;
-  int inputAvailable = 1;
-  int nineAgrees = 0;
-  int comparison;
-
-  // GMP representation of numbers
-  mpz_t rop[n];
-  mpz_t output[3];
-  for (int i = 0; i < n; ++i) {
-    mpz_init( rop[i] );
-  }
-  for (int i = 0; i < 3; ++i)
-  {
-    mpz_init( output[i] );
-  }
-
-  // start reading in
-  while ( inputAvailable ) {
-    // for 9-tuple --- N, d, p, q, d_p, d_q, i_p, i_q and c
-    nineAgrees = 0;
-
-    for (int i = 0; i < n; ++i) {
-
-      feedback = readLine ( readBuffer[i], sizeof ( readBuffer ) );
-
-      if ( feedback == INPUT_NO )
-      {
-        // Finish reading
-        nineAgrees = 0;
-        inputAvailable = 0;
-        break; // -> DONE
-      }
-      else if ( feedback == INPUT_LONG )
-      {
-        fprintf( stderr, "Input line too long.\n" );
-        // Ignore the rest of input and whole 3-tuple
-        nineAgrees = 0; // -> DONE
-      }
-      else if ( feedback == INPUT_YES )
-      {
-        // Memorize line
-        nineAgrees = 1; // -> DONE
-      }
-    }
-
-    if ( nineAgrees )
-    {
-        // do_operation on numbers with GMP
-        for (int i = 0; i < n; ++i)
-        {
-          readIn( rop[i], readBuffer[i], 16 );
-          // gmp_printf( "%Zd \n", rop[i] );
-        }
-
-        // use CRT to decrypt message
-        //   calculate first part
-        mpz_powm ( output[0], rop[8], rop[4], rop[2] );
-        //   calculate second part
-        mpz_powm ( output[1], rop[8], rop[5], rop[3] );
-
-        //   check which part is bigger
-        comparison = mpz_cmp ( output[0], output[1] );
-        if ( comparison > 0 ) { //  op0 > op1
-          // op0 - op1
-          mpz_sub ( output[2], output[0], output[1] );
-          // multi
-          mpz_mul ( output[2], output[2], rop[7]);
-          // mod
-          mpz_mod ( output[2], output[2], rop[2]);
-          // reconstruct message
-          //   multi
-          mpz_mul ( output[2], output[2], rop[3] );
-          //   add
-          mpz_add( output[2], output[2], output[1] );
-
-        } else if ( comparison == 0 ) { // op0 = op1
-          // op0 - op1
-          mpz_sub (output[2], output[0], output[1]);
-          // multi
-          mpz_mul ( output[2], output[2], rop[7]);
-          // mod
-          mpz_mod ( output[2], output[2], rop[2]);
-          // reconstruct message
-          //   multi
-          mpz_mul ( output[2], output[2], rop[3] );
-          //   add
-          mpz_add( output[2], output[2], output[1] );
-
-        } else { // comparison < 0 | op0 < op1
-          //  IS IT REALLY NEEDED ??????????????????????????????????????????????
-          // op1 - op0
-          mpz_sub (output[2], output[1], output[0]);
-          // multi
-          mpz_mul ( output[2], output[2], rop[6]);
-          // mod
-          mpz_mod ( output[2], output[2], rop[3]);
-          // reconstruct message
-          //   multi
-          mpz_mul ( output[2], output[2], rop[2] );
-          //   add
-          mpz_add( output[2], output[2], output[0] );
-        }
-
-        // convert to hex back again
-        hexOut = mpz_get_str (NULL, 16, output[2]);
-        // gmp_printf( "%Zd \n", output );
-        fprintf( stdout, "%s\n", hexOut );
-    }
-
-  }
-
-  // sanity check
-  // if you want check what is inside
-
-  for ( int i = 0; i < n; ++i ) {
-    mpz_clear( rop[i] );
-  }
-    for (int i = 0; i < 3; ++i)
-  {
-    mpz_clear( output[i] );
-  }
-
-}
-
-/*
-Perform stage 3:
-
-- read each 5-tuple of p, q, g, h and m from stdin,
-- compute the ElGamal encryption c = (c_1,c_2),
-- then write the ciphertext c to stdout.
-*/
-
-void stage3() {
-
-  // fill in this function with solution
 
 }
 

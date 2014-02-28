@@ -13,6 +13,11 @@
 #define INPUT_YES 0
 #define INPUT_NO 1
 #define INPUT_LONG -1
+
+// length of single line
 #define IN_BUFF_SIZE 257
+
+// system of input | 16<->HEX
+#define INPUT_FORMAT 16
 
 #endif
