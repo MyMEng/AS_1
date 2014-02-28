@@ -259,26 +259,44 @@ void stage3() {
   }
   mpz_t output[2];
   for (int i = 0; i < 2; ++i) {
-    mpz_init( output );
+    mpz_init( output[i] );
   }
+  mpz_t y; mpz_init( y );
 
   // for 5-tuple
   int inputAvailable = readTuple( n, rop );
   while ( inputAvailable == INPUT_YES ) {
 
-      // raise to power
-      mpz_powm ( output, rop[2], rop[1], rop[0] );
-      // gmp_printf( "%Zd \n", output );
-      // convert to hex back again | NOT SAFE ????????????????????????M+ NULL ??
-      hexOut = mpz_get_str (hexOut, INPUT_FORMAT, output);
+    // generate ephemeral key 'y' in range 1 --- q-1  equivalent to(rop[1]-1)
+    mpz_set_ui ( y, 1 );
+
+    // converts his secret message m, into an element m, of G
+
+    // compute first part of cipher
+    mpz_powm ( output[0], rop[2], y, rop[0] );
+
+    // prepare base for second component
+    mpz_powm ( output[1], rop[3], y, rop[0] );
+    // calculate encryption
+    mpz_mul ( output[1], rop[4], output[1] );
+    mpz_mod( output[1], output[1], rop[0] );
+
+    // gmp_printf( "%Zd \n", output );
+    // convert to hex back again | NOT SAFE ????????????????????????M+ NULL ??
+    for (int i = 0; i < 2; ++i) {
+      hexOut = mpz_get_str (hexOut, INPUT_FORMAT, output[i]);
       fprintf( stdout, "%s\n", hexOut );
-      // check for another input
-      inputAvailable = readTuple( n, rop );
+    }
+
+    // check for another input
+    inputAvailable = readTuple( n, rop );
   }
 
   for ( int i = 0; i < n; ++i ) {
     mpz_clear( rop[i] );
-  } mpz_clear( output ); free( hexOut );
+  } for (int i = 0; i < 2; ++i) {
+    mpz_clear( output[i] );
+  }  mpz_clear( y ); free( hexOut );
 
 }
 
