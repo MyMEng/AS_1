@@ -63,29 +63,26 @@ void readIn ( mpz_t rop, const char *inputStr, int base ) {
 
 }
 
-// raise to power
-// void expModN ( mpz_t rop, const char *inputStr, int base ) {
-
-//   mpz_powm
-
-// }
-
 void stage1() {
 
   // fill in this function with solution
 
+  // n-tuple to read in
+  int n = 3;
+
   // set the buffer for input for 256 characters + new line character
   // remember 3-tuple
-  char readBuffer[3][IN_BUFF_SIZE];
+  // and output stream
+  char readBuffer[n][IN_BUFF_SIZE];
   char *hexOut;
 
   int feedback;
   int inputAvailable = 1;
   int threeAgrees = 0;
 
-  mpz_t rop[3];
+  mpz_t rop[n];
   mpz_t output;
-  for (int i = 0; i < 3; ++i) {
+  for (int i = 0; i < n; ++i) {
     mpz_init( rop[i] );
   }
   mpz_init( output );
@@ -93,40 +90,35 @@ void stage1() {
   while ( inputAvailable ) {
     // for 3-tuple --- N, e, m
     threeAgrees = 0;
-    for (int i = 0; i < 3; ++i) {
+
+    for (int i = 0; i < n; ++i) {
+
       feedback = readLine ( readBuffer[i], sizeof ( readBuffer ) );
+
       if ( feedback == INPUT_NO )
       {
-        // fprintf( stderr, "Couldn't read in a line.\n" );
-        // Exit the program ???
-        // Or just finish reading
+        // Finish reading
         threeAgrees = 0;
         inputAvailable = 0;
-        break;
+        break; // -> DONE
       }
       else if ( feedback == INPUT_LONG )
       {
-        // fprintf( stderr, "Input line too long.\n" );
-        // Exit the program ???
-        // Or just ignore the rest of input
-        // ignore whole 3-tuple
-        threeAgrees = 0;
+        fprintf( stderr, "Input line too long.\n" );
+        // Ignore the rest of input and whole 3-tuple
+        threeAgrees = 0; // -> DONE
       }
       else if ( feedback == INPUT_YES )
       {
-        // Memorize line ??? -> DONE
-        threeAgrees = 1;
+        // Memorize line
+        threeAgrees = 1; // -> DONE
       }
     }
 
     if ( threeAgrees )
     {
-        // fprintf( stdout, "%s\n", readBuffer[0] );
-        // fprintf( stdout, "%s\n", readBuffer[1] );
-        // fprintf( stdout, "%s\n", readBuffer[2] );
-
         // do_operation on numbers with GMP
-        for (int i = 0; i < 3; ++i)
+        for (int i = 0; i < n; ++i)
         {
           readIn( rop[i], readBuffer[i], 16 );
           // gmp_printf( "%Zd \n", rop[i] );
@@ -139,8 +131,6 @@ void stage1() {
         // convert to hex back again
         hexOut = mpz_get_str (hexOut, 16, output);
         fprintf( stdout, "%s\n", hexOut );
-
-
     }
 
   }
@@ -148,7 +138,7 @@ void stage1() {
   // sanity check
   // if you want check what is inside
 
-  for ( int i = 0; i < 3; ++i ) {
+  for ( int i = 0; i < n; ++i ) {
     mpz_clear( rop[i] );
   }
   mpz_clear( output );
@@ -166,6 +156,115 @@ Perform stage 2:
 void stage2() {
 
   // fill in this function with solution
+
+  // n-tuple to read in
+  int n = 9;
+
+  // set the buffer for input for 256 characters + new line character
+  // remember 9-tuple
+  // and output stream
+  char readBuffer[n][IN_BUFF_SIZE];
+  char *hexOut;
+
+  // flags for reading content in
+  int feedback;
+  int inputAvailable = 1;
+  int nineAgrees = 0;
+  int comparison;
+
+  // GMP representation of numbers
+  mpz_t rop[n];
+  mpz_t output[3];
+  for (int i = 0; i < n; ++i) {
+    mpz_init( rop[i] );
+  }
+  for (int i = 0; i < 3; ++i)
+  {
+    mpz_init( output[i] );
+  }
+
+  // start reading in
+  while ( inputAvailable ) {
+    // for 9-tuple --- N, d, p, q, d_p, d_q, i_p, i_q and c
+    nineAgrees = 0;
+
+    for (int i = 0; i < n; ++i) {
+
+      feedback = readLine ( readBuffer[i], sizeof ( readBuffer ) );
+
+      if ( feedback == INPUT_NO )
+      {
+        // Finish reading
+        nineAgrees = 0;
+        inputAvailable = 0;
+        break; // -> DONE
+      }
+      else if ( feedback == INPUT_LONG )
+      {
+        fprintf( stderr, "Input line too long.\n" );
+        // Ignore the rest of input and whole 3-tuple
+        nineAgrees = 0; // -> DONE
+      }
+      else if ( feedback == INPUT_YES )
+      {
+        // Memorize line
+        nineAgrees = 1; // -> DONE
+      }
+    }
+
+    if ( nineAgrees )
+    {
+        // do_operation on numbers with GMP
+        for (int i = 0; i < n; ++i)
+        {
+          readIn( rop[i], readBuffer[i], 16 );
+          // gmp_printf( "%Zd \n", rop[i] );
+        }
+
+        // use CRT to decrypt message
+        //   calculate first part
+        mpz_powm ( output[0], rop[8], rop[4], rop[2] );
+        //   calculate second part
+        mpz_powm ( output[1], rop[8], rop[5], rop[3] );
+
+        //   check which part is bigger
+        comparison = mpz_cmp ( output[0], output[1] );
+        if ( comparison > 0 ) { //  op0 > op1
+          // op0 - op1
+          mpz_sub (output[2], output[0], output[1]);
+          
+
+        } else if ( comparison == 0 )) { // op0 = op1
+          // op0 - op1
+          mpz_sub (output[2], output[0], output[1]);
+
+        } else { // comparison < 0 | op0 < op1
+          // op1 - op0
+          mpz_sub (output[2], output[1], output[0]);
+
+        }
+
+        // raise to power
+        mpz_powm ( output, rop[2], rop[1], rop[0] );
+        // gmp_printf( "%Zd \n", output );
+
+        // convert to hex back again
+        hexOut = mpz_get_str (hexOut, 16, output);
+        fprintf( stdout, "%s\n", hexOut );
+    }
+
+  }
+
+  // sanity check
+  // if you want check what is inside
+
+  for ( int i = 0; i < n; ++i ) {
+    mpz_clear( rop[i] );
+  }
+    for (int i = 0; i < 3; ++i)
+  {
+    mpz_clear( output );
+  }
 
 }
 
