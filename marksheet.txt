@@ -16,7 +16,7 @@
 So that we can calibrate and improve the assignment in the future, give us
 a rough idea how long (in hours) you spent on it *in total*:
 
-effort : [40] hours
+effort : [50] hours
 
 -------------------------------------------------------------------------------
 
@@ -41,16 +41,16 @@ For example, other elements outside this list *often* warrant an increase
 or decrease in marks; examples include hard to quantify features such as
 the style or efficiency of a solution.
 
-[?] Stage 1 : implemented RSA     encryption                         ( 10%)
+[X] Stage 1 : implemented RSA     encryption                         ( 10%)
 
-[?] Stage 2 : implemented RSA     decryption                         ( 10%)
+[X] Stage 2 : implemented RSA     decryption                         ( 10%)
 
-[?] Stage 3 : implemented ElGamal encryption                         ( 10%)
+[X] Stage 3 : implemented ElGamal encryption                         ( 10%)
 
-[?] Stage 4 : implemented ElGamal decryption                         ( 10%)
+[X] Stage 4 : implemented ElGamal decryption                         ( 10%)
 
     Extra   : implemented (and integrated) major optimisations
-[?]           - Chinese Remainder Theorem (CRT)                      ( 10%)
+[X]           - Chinese Remainder Theorem (CRT)                      ( 10%)
 [?]           - Non-binary (i.e., "windowed") exponentiation         ( 20%)
 [?]           - Montgomery multiplication                            ( 30%)
 

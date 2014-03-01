@@ -301,7 +301,6 @@ void stage3() {
     mpz_clear( output[i] );
   }  mpz_clear( y ); free( hexOut );
   gmp_randclear( randomState );
-
 }
 
 /*
@@ -316,6 +315,42 @@ void stage4() {
 
   // fill in this function with solution
 
+  // n-tuple to read in
+  int n = 6;
+  // and output stream
+  char *hexOut = NULL;
+
+  mpz_t rop[n];
+  for (int i = 0; i < n; ++i) {
+    mpz_init( rop[i] );
+  }
+  mpz_t output; mpz_init( output );
+
+  // for 5-tuple
+  int inputAvailable = readTuple( n, rop );
+  while ( inputAvailable == INPUT_YES ) {
+
+    // calculate shared secret --- avoid division | calculate (p-1)-x as exp
+    mpz_sub_ui( output, rop[0], 1 );
+    mpz_sub ( output, output, rop[3]);
+    mpz_powm ( output, rop[4], output, rop[0] );
+
+    // decrypt
+    mpz_mul ( output, output, rop[5] );
+    mpz_mod ( output, output, rop[0] );
+
+    // gmp_printf( "%Zd \n", output );
+    // convert to hex back again | NOT SAFE ????????????????????????M+ NULL ??
+    hexOut = mpz_get_str (hexOut, INPUT_FORMAT, output);
+    fprintf( stdout, "%s\n", hexOut );
+
+    // check for another input
+    inputAvailable = readTuple( n, rop );
+  }
+
+  for ( int i = 0; i < n; ++i ) {
+    mpz_clear( rop[i] );
+  } mpz_clear( output ); free( hexOut );
 }
 
 /*
