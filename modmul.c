@@ -48,7 +48,7 @@ void readIn ( mpz_t rop, const char *inputStr, int base ) {
 }
 
 // read n-tuple
-int readTuple ( const int n, mpz_t *reader ) {
+int readTuple ( const int n, mpz_t *reader, const int ex, char *exp ) {
   // set the buffer for input for 256 characters + new line character
   // remember n-tuple
   char readBuffer[n][IN_BUFF_SIZE];
@@ -74,6 +74,11 @@ int readTuple ( const int n, mpz_t *reader ) {
     for (int i = 0; i < n; ++i) {
       readIn( reader[i], readBuffer[i], INPUT_FORMAT );
       // gmp_printf( "%Zd \n", reader[i] );
+
+      // additionally read in exponent as a binary string
+      if ( i == ex ) {
+        readHexToBin(readBuffer[i], exp);
+      }
     }
   }
 
@@ -124,6 +129,9 @@ void readHexToBin ( char *hex, char *bin ) {
 
 // implementation of 2k-ary-slide-1exp
 void slidingWindow ( mpz_t result, mpz_t base, char *exp, mpz_t mod ) {
+  // string buffer for bin to int
+  char buffer[WINDOW_SIZE];
+
   int ind = 2^WINDOW_SIZE;
   mpz_t lookup[ind/2];
   for ( int i = 0; i < ind/2; ++i ) {
@@ -149,8 +157,11 @@ void slidingWindow ( mpz_t result, mpz_t base, char *exp, mpz_t mod ) {
       while ( exp[l] == '0' ) {
         ++l;
       }
-      // must changge sub set of l from str to integer
-      //u = ;
+      // must change sub set of l from string to integer
+      memcpy( buffer, &exp[l], (l-i)+1 );
+      buffer[(l-i)+1] = '\0';
+      // binary number in string to int
+      u = strtol( buffer, NULL, 2 );
     }
 
     mpz_powm_ui ( result, result, (2^(i-l+1)), mod );
@@ -197,6 +208,7 @@ void stage1() {
 
       // raise to power
       mpz_powm ( output, rop[2], rop[1], rop[0] );
+      slidingWindow( output, rop[2], rop[1], rop[0] );
       // gmp_printf( "%Zd \n", output );
 
       // convert to hex back again | NOT SAFE ????????????????????????M+ NULL ??
@@ -458,9 +470,17 @@ int main( int argc, char* argv[] ) {
 
     readBuffer[0] = 'A';
     readBuffer[1] = 'b';
-    readBuffer[2] = '\0';
+    readBuffer[2] = 'c';
+    readBuffer[3] = 'd';
+    readBuffer[4] = 'E';
+    readBuffer[5] = '\0';
+
+    char buffer[WINDOW_SIZE];
+    memcpy( buffer, &readBuffer[1], (3-1)+1 );
+    buffer[(3-1)+1] = '\0';
+
     int len = strlen(readBuffer);
-    fprintf(stdout, "%s, %d\n", readBuffer, len);
+    fprintf(stdout, "%s, %d\n", buffer, len);
   }
 
   return 0;
