@@ -7,6 +7,8 @@
 
 #include <string.h>
 
+// #include   <math.h>
+
 #include    <gmp.h>
 
 // Reading from stdin constants

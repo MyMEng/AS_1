@@ -122,6 +122,51 @@ void readHexToBin ( char *hex, char *bin ) {
   // clean the rest of string ??????????????????????????????????????????????????
 }
 
+// implementation of 2k-ary-slide-1exp
+void slidingWindow ( mpz_t result, mpz_t base, char *exp, mpz_t mod ) {
+  int ind = 2^WINDOW_SIZE;
+  mpz_t lookup[ind/2];
+  for ( int i = 0; i < ind/2; ++i ) {
+    mpz_init( lookup[i] );
+    // precomputed lookup table
+    mpz_powm_ui ( lookup[i], base, (2*i+1), mod );
+  }
+  // initialize 'result' to identity element a.k.a. 1
+  mpz_set_d ( result, 1 );
+
+  // main loop
+  int l = 0;
+  int u = 0;
+  int i = strlen( exp ) - 1;
+  while ( i >= 0 ) {
+    if ( exp[i] == '0' ) {
+      l = i;
+      u = 0;
+    } else {
+      // l_+
+      l = i - WINDOW_SIZE + 1;
+      l = ( l < 0 ) ? 0 : l ;
+      while ( exp[l] == '0' ) {
+        ++l;
+      }
+      // must changge sub set of l from str to integer
+      //u = ;
+    }
+
+    mpz_powm_ui ( result, result, (2^(i-l+1)), mod );
+    if ( u != 0 ) {
+      // instead of floor used cast to int
+      mpz_add ( result, result, lookup[ (int)((u-1)/2) ] );
+    }
+    i = l - 1;
+  }
+
+
+  for ( int i = 0; i < ind/2; ++i ) {
+    mpz_clear( lookup[i] );
+  }
+}
+
 /*
 Perform stage 1:
 
@@ -404,11 +449,18 @@ int main( int argc, char* argv[] ) {
   // testing stage
   else if( !strcmp( argv[ 1 ], "test" ) ) {
     char readBuffer[IN_BUFF_SIZE];
-    int feedback = readLine ( readBuffer, sizeof ( readBuffer ) );
-    char binBuffer[4*(IN_BUFF_SIZE-1) + 1];
-    readHexToBin(readBuffer, binBuffer);
+    // int feedback = readLine ( readBuffer, sizeof ( readBuffer ) );
+    // char binBuffer[4*(IN_BUFF_SIZE-1) + 1];
+    // readHexToBin(readBuffer, binBuffer);
 
-    fprintf(stdout, "%s\n", binBuffer);
+    // fprintf(stdout, "%s\n", binBuffer);
+
+
+    readBuffer[0] = 'A';
+    readBuffer[1] = 'b';
+    readBuffer[2] = '\0';
+    int len = strlen(readBuffer);
+    fprintf(stdout, "%s, %d\n", readBuffer, len);
   }
 
   return 0;
