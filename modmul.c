@@ -81,7 +81,7 @@ int readTuple ( const int n, mpz_t *reader ) {
 }
 
 // define lookup table for hex->bin
-const *char hexBin[] = { "0000", "0001", "0010", "0011", "0100", "0101", "0110",
+const *char hexBin = { "0000", "0001", "0010", "0011", "0100", "0101", "0110",
   "0111", "1000", "1001", "1010", "1011", "1100", "1101", "1110", "1111" } ;
 
 // read in hex representation as binary into an array
@@ -97,7 +97,7 @@ void readHexToBin ( char *hex, char *bin ) {
       temp = hexBin[10 + hex[i] - 'a'];
     } else {
       fprintf( stderr,
-        "Could not recognize number in hex during conversion: %s\n", hex[i] );
+        "Could not recognize number in hex during conversion: %c\n", hex[i] );
       continue;
     }
 
