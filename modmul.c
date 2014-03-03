@@ -375,7 +375,7 @@ int main( int argc, char* argv[] ) {
       fprintf(stdout, "%c\n", readBuffer[i]);
       if (readBuffer[i] == '\0')
       {
-        fprintf(stderr, "eureca\n", );
+        fprintf(stderr, "eureca\n" );
       }
     }
   }
