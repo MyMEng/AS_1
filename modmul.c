@@ -373,6 +373,10 @@ int main( int argc, char* argv[] ) {
     int feedback = readLine ( readBuffer, sizeof ( readBuffer ) );
     for (int i = 0; i < IN_BUFF_SIZE; ++i) {
       fprintf(stdout, "%c\n", readBuffer[i]);
+      if (readBuffer[i] == '\0')
+      {
+        fprintf(stderr, "eureca\n", );
+      }
     }
   }
 
