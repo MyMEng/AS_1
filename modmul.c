@@ -80,13 +80,37 @@ int readTuple ( const int n, mpz_t *reader ) {
   return feedback;
 }
 
+// define lookup table for hex->bin
+const *char hexBin[] = { "0000", "0001", "0010", "0011", "0100", "0101", "0110",
+  "0111", "1000", "1001", "1010", "1011", "1100", "1101", "1110", "1111" } ;
+
 // read in hex representation as binary into an array
-// void readHexToBin ( char *hex, char *bin ) {
-//   // each character in hex becomes 4 characters in bin
-//   for ( int i = 0; i < count; ++i ) {
-//     /* code */
-//   }
-// }
+void readHexToBin ( char *hex, char *bin ) {
+  // each character in hex becomes 4 characters in bin
+  for ( int i = 0; hex[i] != '\0'; ++i ) {
+    char *temp;
+    if (hex[i] >= '0' && hex[i] <= '9') {
+      temp = hexBin[     hex[i] - '0'];
+    } else if (hex[i] >= 'A' && hex[i] <= 'F') {
+      temp = hexBin[10 + hex[i] - 'A'];
+    } else if (hex[i] >= 'a' && hex[i] <= 'f') {
+      temp = hexBin[10 + hex[i] - 'a'];
+    } else {
+      fprintf( stderr,
+        "Could not recognize number in hex during conversion: %s\n", hex[i] );
+      continue;
+    }
+
+    for (int j = 0; j < 4; ++j) {
+
+      // only for testing
+      if (4*(IN_BUFF_SIZE-1) + 1 <= 4*i + j)
+        fprintf(stderr, "Index out of range in conversion.\n");
+
+      bin[4*i + j] = temp[j];
+    }
+  }
+}
 
 /*
 Perform stage 1:
@@ -371,13 +395,17 @@ int main( int argc, char* argv[] ) {
   else if( !strcmp( argv[ 1 ], "test" ) ) {
     char readBuffer[IN_BUFF_SIZE];
     int feedback = readLine ( readBuffer, sizeof ( readBuffer ) );
-    for (int i = 0; i < IN_BUFF_SIZE; ++i) {
-      fprintf(stdout, "%c\n", readBuffer[i]);
-      if (readBuffer[i] == '\0')
-      {
-        fprintf(stderr, "eureca\n" );
-      }
-    }
+    char binBuffer[4*(IN_BUFF_SIZE-1) + 1];
+    readHexToBin(readBuffer, binBuffer);
+
+    fprintf(stdout, "%s\n", binBuffer);
+    // for (int i = 0; i < IN_BUFF_SIZE; ++i) {
+    //   fprintf(stdout, "%c\n", readBuffer[i]);
+    //   if (readBuffer[i] == '\0')
+    //   {
+    //     fprintf(stderr, "eureca\n" );
+    //   }
+    // }
   }
 
   return 0;
