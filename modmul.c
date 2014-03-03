@@ -1,19 +1,5 @@
 #include "modmul.h"
 
-/*
-Perform stage 1:
-
-- read each 3-tuple of N, e and m from stdin,
-- compute the RSA encryption c,
-- then write the ciphertext c to stdout.
-*/
-
-// typedef struct {
-//   char N[IN_BUFF_SIZE];
-//   char e[IN_BUFF_SIZE];
-//   char m[IN_BUFF_SIZE];
-// } mpz_t;
-
 // read in line of input with restriction to 256 characters
 static int readLine (char *buffer, size_t buffSize) {
 
@@ -48,7 +34,6 @@ static int readLine (char *buffer, size_t buffSize) {
   return INPUT_YES;
 }
 
-
 // how to quickly do exponentiation mod n
 void readIn ( mpz_t rop, const char *inputStr, int base ) {
 
@@ -61,8 +46,6 @@ void readIn ( mpz_t rop, const char *inputStr, int base ) {
     fprintf( stderr, "Could not import hex into mpz_t.\n" );
   } // else OK
 }
-
-
 
 // read n-tuple
 int readTuple ( const int n, mpz_t *reader ) {
@@ -97,9 +80,21 @@ int readTuple ( const int n, mpz_t *reader ) {
   return feedback;
 }
 
+// read in hex representation as binary into an array
+// void readHexToBin ( char *hex, char *bin ) {
+//   // each character in hex becomes 4 characters in bin
+//   for ( int i = 0; i < count; ++i ) {
+//     /* code */
+//   }
+// }
 
+/*
+Perform stage 1:
 
-
+- read each 3-tuple of N, e and m from stdin,
+- compute the RSA encryption c,
+- then write the ciphertext c to stdout.
+*/
 
 void stage1() {
 
@@ -370,6 +365,15 @@ int main( int argc, char* argv[] ) {
   }
   else if( !strcmp( argv[ 1 ], "stage4" ) ) {
     stage4();
+  }
+
+  // testing stage
+  else if( !strcmp( argv[ 1 ], "test" ) ) {
+    char readBuffer[IN_BUFF_SIZE];
+    int feedback = readLine ( readBuffer, sizeof ( readBuffer ) );
+    for (int i = 0; i < IN_BUFF_SIZE; ++i) {
+      fprintf(stdout, "%c\n", readBuffer[i]);
+    }
   }
 
   return 0;

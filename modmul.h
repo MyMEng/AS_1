@@ -20,4 +20,7 @@
 // system of input | 16<->HEX
 #define INPUT_FORMAT 16
 
+// sliding window exponentiation
+#define WINDOW_SIZE 4
+
 #endif
