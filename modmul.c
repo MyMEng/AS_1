@@ -132,14 +132,14 @@ void slidingWindow ( mpz_t result, mpz_t base, char *exp, mpz_t mod ) {
   // string buffer for bin to int
   char buffer[WINDOW_SIZE];
 
-  fprintf(stdout, "%s\n", exp);
+  // fprintf(stdout, "%s\n", exp);
 
   int ind = pow(2, WINDOW_SIZE);
   mpz_t lookup[ind/2];
   for ( int i = 0; i < ind/2; ++i ) {
     mpz_init( lookup[i] );
     // precomputed lookup table
-    printf("Pow: %d\n", (2*i+1));
+    // printf("Pow: %d\n", (2*i+1));
     mpz_powm_ui ( lookup[i], base, (2*i+1), mod );
   }
   // initialize 'result' to identity element a.k.a. 1
@@ -149,30 +149,32 @@ void slidingWindow ( mpz_t result, mpz_t base, char *exp, mpz_t mod ) {
   int l = 0;
   int u = 0;
   int i = strlen( exp ) - 1;
+  int beginning = i;
   while ( i >= 0 ) {
-    if ( exp[i] == '0' ) {
+    if ( exp[beginning- i] == '0' ) {
       l = i;
       u = 0;
+      // printf("0 | 0 | ind: %d\n", beginning-i);
     } else {
       // l_+
       l = i - WINDOW_SIZE + 1;
       l = ( l < 0 ) ? 0 : l ;
-      while ( exp[l] == '0' ) {
+      while ( exp[beginning -l] == '0' ) {
         ++l;
       }
       // must change sub set of l from string to integer
-      memcpy( buffer, &exp[l], (i-l)+1 );
+      memcpy( buffer, &exp[beginning-i], i-l+1 ); //  &exp[l], (i-l)+1
       buffer[(i-l)+1] = '\0';
       // binary number in string to int
       u = strtol( buffer, NULL, 2 );
 
-      fprintf(stdout, "%s | %d\n", buffer, u);
+      // fprintf(stdout, "%s | %d | ind: %d- quant: %d\n", buffer, u, beginning-i, i-l+1);
     }
 
     mpz_powm_ui ( result, result, (int)pow(2, (i-l+1)), mod );
     if ( u != 0 ) {
       // instead of floor used cast to int
-      mpz_add ( result, result, lookup[ (int)floor((u-1)/2) ] );
+      mpz_mul ( result, result, lookup[ (int)floor((u-1)/2) ] );
       // result mod n - not needed
       mpz_mod ( result, result, mod );
     }
