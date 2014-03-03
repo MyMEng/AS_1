@@ -81,23 +81,27 @@ int readTuple ( const int n, mpz_t *reader ) {
 }
 
 // define lookup table for hex->bin
-const char  *const hexBin = { "0000", "0001", "0010", "0011", "0100", "0101", "0110",
+const char hexBin[16][4] = { "0000", "0001", "0010", "0011", "0100", "0101", "0110",
   "0111", "1000", "1001", "1010", "1011", "1100", "1101", "1110", "1111" } ;
 
 // read in hex representation as binary into an array
 void readHexToBin ( char *hex, char *bin ) {
+  const char *temp;
+  int end = 0;
+  int i = 0;
   // each character in hex becomes 4 characters in bin
-  for ( int i = 0; hex[i] != '\0'; ++i ) {
-    char *temp;
+  while( !( hex[i] == '\0' || hex[i] =='\n' ) ) {
+  // for ( int i = 0; hex[i+1] != '\0'; ++i ) {
     if (hex[i] >= '0' && hex[i] <= '9') {
-      temp = hexBin[     hex[i] - '0'];
-    } else if (hex[i] >= 'A' && hex[i] <= 'F') {
-      temp = hexBin[10 + hex[i] - 'A'];
-    } else if (hex[i] >= 'a' && hex[i] <= 'f') {
-      temp = hexBin[10 + hex[i] - 'a'];
+      temp = hexBin[ hex[i] - '0' ];
+    } else if ( hex[i] >= 'A' && hex[i] <= 'F' ) {
+      temp = hexBin[ 10 + hex[i] - 'A' ];
+    } else if ( hex[i] >= 'a' && hex[i] <= 'f' ) {
+      temp = hexBin[ 10 + hex[i] - 'a' ];
     } else {
       fprintf( stderr,
         "Could not recognize number in hex during conversion: %c\n", hex[i] );
+      ++i;
       continue;
     }
 
@@ -109,7 +113,13 @@ void readHexToBin ( char *hex, char *bin ) {
 
       bin[4*i + j] = temp[j];
     }
+    end = 4*i+3;
+    ++i;
   }
+
+  // append \0 at the end
+  bin[end+1] = '\0';
+  // clean the rest of string ??????????????????????????????????????????????????
 }
 
 /*
@@ -399,13 +409,6 @@ int main( int argc, char* argv[] ) {
     readHexToBin(readBuffer, binBuffer);
 
     fprintf(stdout, "%s\n", binBuffer);
-    // for (int i = 0; i < IN_BUFF_SIZE; ++i) {
-    //   fprintf(stdout, "%c\n", readBuffer[i]);
-    //   if (readBuffer[i] == '\0')
-    //   {
-    //     fprintf(stderr, "eureca\n" );
-    //   }
-    // }
   }
 
   return 0;
