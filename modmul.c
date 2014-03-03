@@ -1,5 +1,47 @@
 #include "modmul.h"
 
+// define lookup table for hex->bin
+const char hexBin[16][4] = { "0000", "0001", "0010", "0011", "0100", "0101", "0110",
+  "0111", "1000", "1001", "1010", "1011", "1100", "1101", "1110", "1111" } ;
+
+// read in hex representation as binary into an array
+void readHexToBin ( char *hex, char *bin ) {
+  const char *temp;
+  int end = 0;
+  int i = 0;
+  // each character in hex becomes 4 characters in bin
+  while( !( hex[i] == '\0' || hex[i] =='\n' ) ) {
+  // for ( int i = 0; hex[i+1] != '\0'; ++i ) {
+    if (hex[i] >= '0' && hex[i] <= '9') {
+      temp = hexBin[ hex[i] - '0' ];
+    } else if ( hex[i] >= 'A' && hex[i] <= 'F' ) {
+      temp = hexBin[ 10 + hex[i] - 'A' ];
+    } else if ( hex[i] >= 'a' && hex[i] <= 'f' ) {
+      temp = hexBin[ 10 + hex[i] - 'a' ];
+    } else {
+      fprintf( stderr,
+        "Could not recognize number in hex during conversion: %c\n", hex[i] );
+      ++i;
+      continue;
+    }
+
+    for (int j = 0; j < 4; ++j) {
+
+      // only for testing
+      if (4*(IN_BUFF_SIZE-1) + 1 <= 4*i + j)
+        fprintf(stderr, "Index out of range in conversion.\n");
+
+      bin[4*i + j] = temp[j];
+    }
+    end = 4*i+3;
+    ++i;
+  }
+
+  // append \0 at the end
+  bin[end+1] = '\0';
+  // clean the rest of string ??????????????????????????????????????????????????
+}
+
 // read in line of input with restriction to 256 characters
 static int readLine (char *buffer, size_t buffSize) {
 
@@ -85,58 +127,19 @@ int readTuple ( const int n, mpz_t *reader, const int ex, char *exp ) {
   return feedback;
 }
 
-// define lookup table for hex->bin
-const char hexBin[16][4] = { "0000", "0001", "0010", "0011", "0100", "0101", "0110",
-  "0111", "1000", "1001", "1010", "1011", "1100", "1101", "1110", "1111" } ;
-
-// read in hex representation as binary into an array
-void readHexToBin ( char *hex, char *bin ) {
-  const char *temp;
-  int end = 0;
-  int i = 0;
-  // each character in hex becomes 4 characters in bin
-  while( !( hex[i] == '\0' || hex[i] =='\n' ) ) {
-  // for ( int i = 0; hex[i+1] != '\0'; ++i ) {
-    if (hex[i] >= '0' && hex[i] <= '9') {
-      temp = hexBin[ hex[i] - '0' ];
-    } else if ( hex[i] >= 'A' && hex[i] <= 'F' ) {
-      temp = hexBin[ 10 + hex[i] - 'A' ];
-    } else if ( hex[i] >= 'a' && hex[i] <= 'f' ) {
-      temp = hexBin[ 10 + hex[i] - 'a' ];
-    } else {
-      fprintf( stderr,
-        "Could not recognize number in hex during conversion: %c\n", hex[i] );
-      ++i;
-      continue;
-    }
-
-    for (int j = 0; j < 4; ++j) {
-
-      // only for testing
-      if (4*(IN_BUFF_SIZE-1) + 1 <= 4*i + j)
-        fprintf(stderr, "Index out of range in conversion.\n");
-
-      bin[4*i + j] = temp[j];
-    }
-    end = 4*i+3;
-    ++i;
-  }
-
-  // append \0 at the end
-  bin[end+1] = '\0';
-  // clean the rest of string ??????????????????????????????????????????????????
-}
-
 // implementation of 2k-ary-slide-1exp
 void slidingWindow ( mpz_t result, mpz_t base, char *exp, mpz_t mod ) {
   // string buffer for bin to int
   char buffer[WINDOW_SIZE];
 
-  int ind = 2^WINDOW_SIZE;
+  fprintf(stdout, "%s\n", exp);
+
+  int ind = pow(2, WINDOW_SIZE);
   mpz_t lookup[ind/2];
   for ( int i = 0; i < ind/2; ++i ) {
     mpz_init( lookup[i] );
     // precomputed lookup table
+    printf("Pow: %d\n", (2*i+1));
     mpz_powm_ui ( lookup[i], base, (2*i+1), mod );
   }
   // initialize 'result' to identity element a.k.a. 1
@@ -158,16 +161,20 @@ void slidingWindow ( mpz_t result, mpz_t base, char *exp, mpz_t mod ) {
         ++l;
       }
       // must change sub set of l from string to integer
-      memcpy( buffer, &exp[l], (l-i)+1 );
-      buffer[(l-i)+1] = '\0';
+      memcpy( buffer, &exp[l], (i-l)+1 );
+      buffer[(i-l)+1] = '\0';
       // binary number in string to int
       u = strtol( buffer, NULL, 2 );
+
+      fprintf(stdout, "%s | %d\n", buffer, u);
     }
 
-    mpz_powm_ui ( result, result, (2^(i-l+1)), mod );
+    mpz_powm_ui ( result, result, (int)pow(2, (i-l+1)), mod );
     if ( u != 0 ) {
       // instead of floor used cast to int
-      mpz_add ( result, result, lookup[ (int)((u-1)/2) ] );
+      mpz_add ( result, result, lookup[ (int)floor((u-1)/2) ] );
+      // result mod n - not needed
+      mpz_mod ( result, result, mod );
     }
     i = l - 1;
   }
@@ -195,6 +202,9 @@ void stage1() {
   // and output stream
   char *hexOut = NULL;
 
+  // binary representation of exponent
+  char binExp[4*(IN_BUFF_SIZE-1) + 1];
+
   mpz_t rop[n];
   for (int i = 0; i < n; ++i) {
     mpz_init( rop[i] );
@@ -203,12 +213,12 @@ void stage1() {
   mpz_init( output );
 
   // for 3-tuple --- N, e, m
-  int inputAvailable = readTuple( n, rop );
+  int inputAvailable = readTuple( n, rop, 1, binExp );
   while ( inputAvailable == INPUT_YES ) {
 
       // raise to power
-      mpz_powm ( output, rop[2], rop[1], rop[0] );
-      slidingWindow( output, rop[2], rop[1], rop[0] );
+      // mpz_powm ( output, rop[2], rop[1], rop[0] );
+      slidingWindow( output, rop[2], binExp, rop[0] );
       // gmp_printf( "%Zd \n", output );
 
       // convert to hex back again | NOT SAFE ????????????????????????M+ NULL ??
@@ -216,7 +226,7 @@ void stage1() {
       fprintf( stdout, "%s\n", hexOut );
 
       // check for another input
-      inputAvailable = readTuple( n, rop );
+      inputAvailable = readTuple( n, rop, 1, binExp );
   }
 
   for ( int i = 0; i < n; ++i ) {
@@ -232,95 +242,95 @@ Perform stage 2:
 - then write the plaintext m to stdout.
 */
 
-void stage2() {
+// void stage2() {
 
-  // fill in this function with solution
+  // // fill in this function with solution
 
-  // n-tuple to read in
-  int n = 9;
-  // and output stream
-  char *hexOut = NULL;
-  // string comparison
-  int comparison;
+  // // n-tuple to read in
+  // int n = 9;
+  // // and output stream
+  // char *hexOut = NULL;
+  // // string comparison
+  // int comparison;
 
-  // GMP representation of numbers
-  mpz_t rop[n];
-  mpz_t output[3];
-  for (int i = 0; i < n; ++i) {
-    mpz_init( rop[i] );
-  } for (int i = 0; i < 3; ++i) {
-    mpz_init( output[i] );
-  }
+  // // GMP representation of numbers
+  // mpz_t rop[n];
+  // mpz_t output[3];
+  // for (int i = 0; i < n; ++i) {
+  //   mpz_init( rop[i] );
+  // } for (int i = 0; i < 3; ++i) {
+  //   mpz_init( output[i] );
+  // }
 
-  // for 9-tuple --- N, d, p, q, d_p, d_q, i_p, i_q and c
-  int inputAvailable = readTuple( n, rop );
-  while ( inputAvailable == INPUT_YES ) {
+  // // for 9-tuple --- N, d, p, q, d_p, d_q, i_p, i_q and c
+  // int inputAvailable = readTuple( n, rop );
+  // while ( inputAvailable == INPUT_YES ) {
 
-    // use CRT to decrypt message
-    //   calculate first part
-    mpz_powm ( output[0], rop[8], rop[4], rop[2] );
-    //   calculate second part
-    mpz_powm ( output[1], rop[8], rop[5], rop[3] );
+  //   // use CRT to decrypt message
+  //   //   calculate first part
+  //   mpz_powm ( output[0], rop[8], rop[4], rop[2] );
+  //   //   calculate second part
+  //   mpz_powm ( output[1], rop[8], rop[5], rop[3] );
 
-    //   check which part is bigger
-    comparison = mpz_cmp ( output[0], output[1] );
-    if ( comparison > 0 ) { //  op0 > op1
-      // op0 - op1
-      mpz_sub ( output[2], output[0], output[1] );
-      // multi
-      mpz_mul ( output[2], output[2], rop[7]);
-      // mod
-      mpz_mod ( output[2], output[2], rop[2]);
-      // reconstruct message
-      //   multi
-      mpz_mul ( output[2], output[2], rop[3] );
-      //   add
-      mpz_add( output[2], output[2], output[1] );
+  //   //   check which part is bigger
+  //   comparison = mpz_cmp ( output[0], output[1] );
+  //   if ( comparison > 0 ) { //  op0 > op1
+  //     // op0 - op1
+  //     mpz_sub ( output[2], output[0], output[1] );
+  //     // multi
+  //     mpz_mul ( output[2], output[2], rop[7]);
+  //     // mod
+  //     mpz_mod ( output[2], output[2], rop[2]);
+  //     // reconstruct message
+  //     //   multi
+  //     mpz_mul ( output[2], output[2], rop[3] );
+  //     //   add
+  //     mpz_add( output[2], output[2], output[1] );
 
-    } else if ( comparison == 0 ) { // op0 = op1
-      // op0 - op1
-      mpz_sub (output[2], output[0], output[1]);
-      // multi
-      mpz_mul ( output[2], output[2], rop[7]);
-      // mod
-      mpz_mod ( output[2], output[2], rop[2]);
-      // reconstruct message
-      //   multi
-      mpz_mul ( output[2], output[2], rop[3] );
-      //   add
-      mpz_add( output[2], output[2], output[1] );
+  //   } else if ( comparison == 0 ) { // op0 = op1
+  //     // op0 - op1
+  //     mpz_sub (output[2], output[0], output[1]);
+  //     // multi
+  //     mpz_mul ( output[2], output[2], rop[7]);
+  //     // mod
+  //     mpz_mod ( output[2], output[2], rop[2]);
+  //     // reconstruct message
+  //     //   multi
+  //     mpz_mul ( output[2], output[2], rop[3] );
+  //     //   add
+  //     mpz_add( output[2], output[2], output[1] );
 
-    } else { // comparison < 0 | op0 < op1
-      //  IS IT REALLY NEEDED ??????????????????????????????????????????????????
-      // op1 - op0
-      mpz_sub (output[2], output[1], output[0]);
-      // multi
-      mpz_mul ( output[2], output[2], rop[6]);
-      // mod
-      mpz_mod ( output[2], output[2], rop[3]);
-      // reconstruct message
-      //   multi
-      mpz_mul ( output[2], output[2], rop[2] );
-      //   add
-      mpz_add( output[2], output[2], output[0] );
-    }
+  //   } else { // comparison < 0 | op0 < op1
+  //     //  IS IT REALLY NEEDED ??????????????????????????????????????????????????
+  //     // op1 - op0
+  //     mpz_sub (output[2], output[1], output[0]);
+  //     // multi
+  //     mpz_mul ( output[2], output[2], rop[6]);
+  //     // mod
+  //     mpz_mod ( output[2], output[2], rop[3]);
+  //     // reconstruct message
+  //     //   multi
+  //     mpz_mul ( output[2], output[2], rop[2] );
+  //     //   add
+  //     mpz_add( output[2], output[2], output[0] );
+  //   }
 
-    // convert to hex back again
-    // convert to hex back again | NOT SAFE ????????????????????????M+ NULL ????
-    hexOut = mpz_get_str (hexOut, 16, output[2]);
-    // gmp_printf( "%Zd \n", output );
-    fprintf( stdout, "%s\n", hexOut );
+  //   // convert to hex back again
+  //   // convert to hex back again | NOT SAFE ????????????????????????M+ NULL ????
+  //   hexOut = mpz_get_str (hexOut, 16, output[2]);
+  //   // gmp_printf( "%Zd \n", output );
+  //   fprintf( stdout, "%s\n", hexOut );
 
-    // check for another input
-    inputAvailable = readTuple( n, rop );
-  }
+  //   // check for another input
+  //   inputAvailable = readTuple( n, rop );
+  // }
 
-  for ( int i = 0; i < n; ++i ) {
-    mpz_clear( rop[i] );
-  } for (int i = 0; i < 3; ++i) {
-    mpz_clear( output[i] );
-  } free( hexOut );
-}
+  // for ( int i = 0; i < n; ++i ) {
+  //   mpz_clear( rop[i] );
+  // } for (int i = 0; i < 3; ++i) {
+  //   mpz_clear( output[i] );
+  // } free( hexOut );
+// }
 
 /*
 Perform stage 3:
@@ -330,64 +340,64 @@ Perform stage 3:
 - then write the ciphertext c to stdout.
 */
 
-void stage3() {
+// void stage3() {
 
-  // fill in this function with solution
+  // // fill in this function with solution
 
-  // n-tuple to read in
-  int n = 5;
-  // and output stream
-  char *hexOut = NULL;
+  // // n-tuple to read in
+  // int n = 5;
+  // // and output stream
+  // char *hexOut = NULL;
 
-  mpz_t rop[n];
-  for (int i = 0; i < n; ++i) {
-    mpz_init( rop[i] );
-  }
-  mpz_t output[2];
-  for (int i = 0; i < 2; ++i) {
-    mpz_init( output[i] );
-  }
-  mpz_t y; mpz_init( y );
-  gmp_randstate_t randomState;
+  // mpz_t rop[n];
+  // for (int i = 0; i < n; ++i) {
+  //   mpz_init( rop[i] );
+  // }
+  // mpz_t output[2];
+  // for (int i = 0; i < 2; ++i) {
+  //   mpz_init( output[i] );
+  // }
+  // mpz_t y; mpz_init( y );
+  // gmp_randstate_t randomState;
 
-  // for 5-tuple
-  int inputAvailable = readTuple( n, rop );
-  while ( inputAvailable == INPUT_YES ) {
+  // // for 5-tuple
+  // int inputAvailable = readTuple( n, rop );
+  // while ( inputAvailable == INPUT_YES ) {
 
-    // generate ephemeral key 'y' in range 1 --- q-1  equivalent to(rop[1]-1)
-    // mpz_set_ui ( y, 1 ); // testing purpose
-    gmp_randinit_default ( randomState );
-    mpz_urandomm ( y, randomState, rop[1] );
+  //   // generate ephemeral key 'y' in range 1 --- q-1  equivalent to(rop[1]-1)
+  //   // mpz_set_ui ( y, 1 ); // testing purpose
+  //   gmp_randinit_default ( randomState );
+  //   mpz_urandomm ( y, randomState, rop[1] );
 
-    // converts his secret message m, into an element m, of G
+  //   // converts his secret message m, into an element m, of G
 
-    // compute first part of cipher
-    mpz_powm ( output[0], rop[2], y, rop[0] );
+  //   // compute first part of cipher
+  //   mpz_powm ( output[0], rop[2], y, rop[0] );
 
-    // prepare base for second component
-    mpz_powm ( output[1], rop[3], y, rop[0] );
-    // calculate encryption
-    mpz_mul ( output[1], rop[4], output[1] );
-    mpz_mod( output[1], output[1], rop[0] );
+  //   // prepare base for second component
+  //   mpz_powm ( output[1], rop[3], y, rop[0] );
+  //   // calculate encryption
+  //   mpz_mul ( output[1], rop[4], output[1] );
+  //   mpz_mod( output[1], output[1], rop[0] );
 
-    // gmp_printf( "%Zd \n", output );
-    // convert to hex back again | NOT SAFE ????????????????????????M+ NULL ??
-    for (int i = 0; i < 2; ++i) {
-      hexOut = mpz_get_str (hexOut, INPUT_FORMAT, output[i]);
-      fprintf( stdout, "%s\n", hexOut );
-    }
+  //   // gmp_printf( "%Zd \n", output );
+  //   // convert to hex back again | NOT SAFE ????????????????????????M+ NULL ??
+  //   for (int i = 0; i < 2; ++i) {
+  //     hexOut = mpz_get_str (hexOut, INPUT_FORMAT, output[i]);
+  //     fprintf( stdout, "%s\n", hexOut );
+  //   }
 
-    // check for another input
-    inputAvailable = readTuple( n, rop );
-  }
+  //   // check for another input
+  //   inputAvailable = readTuple( n, rop );
+  // }
 
-  for ( int i = 0; i < n; ++i ) {
-    mpz_clear( rop[i] );
-  } for (int i = 0; i < 2; ++i) {
-    mpz_clear( output[i] );
-  }  mpz_clear( y ); free( hexOut );
-  gmp_randclear( randomState );
-}
+  // for ( int i = 0; i < n; ++i ) {
+  //   mpz_clear( rop[i] );
+  // } for (int i = 0; i < 2; ++i) {
+  //   mpz_clear( output[i] );
+  // }  mpz_clear( y ); free( hexOut );
+  // gmp_randclear( randomState );
+// }
 
 /*
 Perform stage 4:
@@ -397,47 +407,47 @@ Perform stage 4:
 - then write the plaintext m to stdout.
 */
 
-void stage4() {
+// void stage4() {
 
-  // fill in this function with solution
+  // // fill in this function with solution
 
-  // n-tuple to read in
-  int n = 6;
-  // and output stream
-  char *hexOut = NULL;
+  // // n-tuple to read in
+  // int n = 6;
+  // // and output stream
+  // char *hexOut = NULL;
 
-  mpz_t rop[n];
-  for (int i = 0; i < n; ++i) {
-    mpz_init( rop[i] );
-  }
-  mpz_t output; mpz_init( output );
+  // mpz_t rop[n];
+  // for (int i = 0; i < n; ++i) {
+  //   mpz_init( rop[i] );
+  // }
+  // mpz_t output; mpz_init( output );
 
-  // for 5-tuple
-  int inputAvailable = readTuple( n, rop );
-  while ( inputAvailable == INPUT_YES ) {
+  // // for 5-tuple
+  // int inputAvailable = readTuple( n, rop );
+  // while ( inputAvailable == INPUT_YES ) {
 
-    // calculate shared secret --- avoid division | calculate (p-1)-x as exp
-    mpz_sub_ui( output, rop[0], 1 );
-    mpz_sub ( output, output, rop[3]);
-    mpz_powm ( output, rop[4], output, rop[0] );
+  //   // calculate shared secret --- avoid division | calculate (p-1)-x as exp
+  //   mpz_sub_ui( output, rop[0], 1 );
+  //   mpz_sub ( output, output, rop[3]);
+  //   mpz_powm ( output, rop[4], output, rop[0] );
 
-    // decrypt
-    mpz_mul ( output, output, rop[5] );
-    mpz_mod ( output, output, rop[0] );
+  //   // decrypt
+  //   mpz_mul ( output, output, rop[5] );
+  //   mpz_mod ( output, output, rop[0] );
 
-    // gmp_printf( "%Zd \n", output );
-    // convert to hex back again | NOT SAFE ????????????????????????M+ NULL ??
-    hexOut = mpz_get_str (hexOut, INPUT_FORMAT, output);
-    fprintf( stdout, "%s\n", hexOut );
+  //   // gmp_printf( "%Zd \n", output );
+  //   // convert to hex back again | NOT SAFE ????????????????????????M+ NULL ??
+  //   hexOut = mpz_get_str (hexOut, INPUT_FORMAT, output);
+  //   fprintf( stdout, "%s\n", hexOut );
 
-    // check for another input
-    inputAvailable = readTuple( n, rop );
-  }
+  //   // check for another input
+  //   inputAvailable = readTuple( n, rop );
+  // }
 
-  for ( int i = 0; i < n; ++i ) {
-    mpz_clear( rop[i] );
-  } mpz_clear( output ); free( hexOut );
-}
+  // for ( int i = 0; i < n; ++i ) {
+  //   mpz_clear( rop[i] );
+  // } mpz_clear( output ); free( hexOut );
+// }
 
 /*
 The main function acts as a driver for the assignment by simply invoking
@@ -449,13 +459,13 @@ int main( int argc, char* argv[] ) {
     stage1();
   }
   else if( !strcmp( argv[ 1 ], "stage2" ) ) {
-    stage2();
+    // stage2();
   }
   else if( !strcmp( argv[ 1 ], "stage3" ) ) {
-    stage3();
+    // stage3();
   }
   else if( !strcmp( argv[ 1 ], "stage4" ) ) {
-    stage4();
+    // stage4();
   }
 
   // testing stage
