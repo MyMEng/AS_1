@@ -28,7 +28,7 @@ by the assignment description of course).  Let us know what third-party
 source code or resources you used (if any) so it's clear what's your work 
 and what isn't:
 
-[...]
+[]
 
 -------------------------------------------------------------------------------
 
@@ -52,7 +52,7 @@ the style or efficiency of a solution.
     Extra   : implemented (and integrated) major optimisations
 [X]           - Chinese Remainder Theorem (CRT)                      ( 10%)
 [X]           - Non-binary (i.e., "windowed") exponentiation         ( 20%)
-[?]           - Montgomery multiplication                            ( 30%)
+[X]           - Montgomery multiplication                            ( 30%)
 
 
                                                                      ------
@@ -66,6 +66,11 @@ Any other documentation, notes or comments that you think are important or
 might be easy to overlook (e.g., a subtle issue or technique in associated
 source code) should go here:
 
-[...]
+[
+* Avoid to compute inverse in Stage 4 by simple mathematical workaround.
+* Own implementation of random number generator for Stage 3.
+* Montgomery's Ladder to prevent side-channel attacks in sliding window
+    multiplication.
+]
 
 -------------------------------------------------------------------------------
