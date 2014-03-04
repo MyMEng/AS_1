@@ -135,6 +135,7 @@ void slidingWindow ( mpz_t result, mpz_t base, char *exp, mpz_t mod ) {
 
   int ind = pow(2, WINDOW_SIZE);
   mpz_t lookup[ind/2];
+  // Montgomery's Ladder to defend against side-channel attacks
   for ( int i = 0; i < ind/2; ++i ) {
     mpz_init( lookup[i] );
     // precomputed lookup table
