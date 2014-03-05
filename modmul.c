@@ -181,6 +181,144 @@ void slidingWindow ( mpz_t result, mpz_t base, char *exp, mpz_t mod ) {
   }
 }
 
+// generate random seed
+int getSeed ( char *randomBinStr ) {
+
+  unsigned char *random_bytes = random_bytes = malloc((size_t)5 + 1);
+  RAND_bytes(random_bytes, 5);
+  *(random_bytes + 5) = '\0';
+  fprintf(stderr, "%s\n", random_bytes);
+  return 0;
+
+}
+
+
+// MONTGOMERY
+void zn_mont_rho_sq ( mpz_t output, mpz_t modulus ) {
+  // initialize to 1
+  mpz_set_d ( output, 1 );
+  // initialize variables
+  //   The number of bits per limb
+  //   Global Constant: const int mp_bits_per_limb = w
+  //   size_t mpz_size (const mpz_t op)
+  long int l_N = mpz_size ( modulus );
+
+  for ( long int i = 1; i < 2 * l_N * mp_bits_per_limb; ++i ) {
+    mpz_add( output, output, output );
+    mpz_mod( output, output, modulus );
+  }
+}
+
+void zn_mont_omega ( mpz_t output, mpz_t modulus, mpz_t base ) {
+  // initialize to 1
+  mpz_set_d ( output, 1 );
+  // Global Constant: const int mp_bits_per_limb = w
+  for ( int i = 1; i < mp_bits_per_limb-1; ++i ) {
+    mpz_mul ( output, output, output );
+    mpz_mod ( output, output, base );
+    mpz_mul ( output, output, modulus );
+    mpz_mod ( output, output, base );
+  }
+  mpz_ui_sub ( output, 0, output );
+}
+
+void zn_mont_mul ( mpz_t output, mpz_t x, mpz_t y, mpz_t N, mpz_t base, mpz_t omega ) {
+  // initialize to 1
+  mpz_set_d ( output, 0 );
+  long int l_N = mpz_size ( N );
+  // initialize temporary variable
+  mpz_t u;
+  mpz_init2( u, 1024 );
+
+  mp_limb_t addOn = 1;
+  mp_limb_t *output_0 = output->_mp_d; // & mpz_getlimbn ( output, 0 );
+  mp_limb_t *x_0 = x->_mp_d; // & mpz_getlimbn ( x, 0 );
+  mp_limb_t *y_i = y->_mp_d;
+  mp_limb_t *u_i = u->_mp_d;
+  int carry;
+  int carryInd = 1;
+
+  for ( long int i = 0; i < l_N-1; ++i ) {
+    printf("LO3.1\n");
+    // assign u
+    mpz_set_d ( u, 0 );
+    printf("LO3.2\n");
+    //   y_i * x_0
+    // u = y_i[i] * x_0[0]
+    mpn_mul ( u_i, y_i, i, x_0, 0);
+    printf("LO3.2\n");
+    // u = u_i[0] + output_0[0]
+    carry = mpn_add (u_i, u_i, 0, output_0, 0);
+    printf("LO3.3\n");
+    while ( carry == 1 ) {
+      carry = mpn_add (u_i, u_i, carryInd, &addOn, 0);
+      ++carryInd;
+    } carryInd = 1;
+    printf("LO3.4\n");
+
+    mpz_mul ( u, u, omega );
+    mpz_mod ( u , u, base );
+
+    // assign output
+    mpz_mul( u, u, N );
+    mpz_add( output, output, u );
+
+    // define u as y_i * x
+    //   put y_i into u
+    mpz_set_ui ( u, y_i[i] );
+    mpz_mul( u, u, x );
+
+    mpz_add( output, output, u );
+
+    mpz_cdiv_q ( output, output, base );
+  }
+  if ( mpz_cmp( output, N ) >= 0 ) {
+    mpz_sub( output, output, N );
+  }
+  mpz_clear( u );
+}
+
+void zn_mont_red ( mpz_t output, mpz_t t, mpz_t N, mpz_t base, mpz_t omega ) {
+  // helper variable
+  mpz_t u;
+  mpz_init2( u, 1024 );
+  mpz_t v;
+  mpz_init2( v, 1024 );
+
+  mp_limb_t *output_i = output->_mp_d;
+
+  mpz_set( output, t );
+  long int l_N = mpz_size ( N );
+  for ( long int i = 0; i < l_N-1; ++i ) {
+    //set u to output_i
+    mpz_set_ui ( u, output_i[i] );
+    mpz_mul( u, u, omega );
+    mpz_mod( u, u, base );
+
+    mpz_mul( u, u, N );
+    // base^i
+    mpz_pow_ui( v, base, i );
+    mpz_mul( u, u, v );
+    mpz_add( output, output, u );
+  }
+
+  // r <- r/b^lN
+  // set u to b^Nl
+  mpz_pow_ui ( u, base, l_N);
+  mpz_cdiv_q( output, output, u );
+
+
+  if ( mpz_cmp( output, N ) >= 0 ) {
+    mpz_sub( output, output, N );
+  }
+  mpz_clear( u );
+  mpz_clear( v );
+}
+// void zn_mont_exp (  ) {
+  // //lol
+// }
+
+
 /*
 Perform stage 1:
 
@@ -371,6 +509,7 @@ void stage3() {
   }
   mpz_t y; mpz_init( y );
   gmp_randstate_t randomState;
+  // char randomState[(IN_BUFF_SIZE-1)*4 + 1];
 
   // for 5-tuple
   int inputAvailable = readTuple( n, rop );
@@ -379,6 +518,8 @@ void stage3() {
     // generate ephemeral key 'y' in range 1 --- q-1  equivalent to(rop[1]-1)
     // mpz_set_ui ( y, 1 ); // testing purpose
     gmp_randinit_default ( randomState );
+
+    // if random to big generate new one
     mpz_urandomm ( y, randomState, rop[1] );
 
     // converts his secret message m, into an element m, of G
@@ -492,7 +633,47 @@ int main( int argc, char* argv[] ) {
 
   // testing stage
   else if( !strcmp( argv[ 1 ], "test" ) ) {
-    char readBuffer[IN_BUFF_SIZE];
+
+    // x, N
+    int n = 2;
+
+    mpz_t rop[n];
+    for (int i = 0; i < n; ++i) {
+      mpz_init( rop[i] );
+    }
+    mpz_t rho_sq; mpz_init( rho_sq );
+    mpz_t omega; mpz_init( omega );
+    mpz_t output; mpz_init( output );
+    mpz_t output1; mpz_init( output1 );
+    mpz_t one; mpz_init( one );
+    mpz_set_ui( one, 1 );
+    mpz_t base; mpz_init( base );
+    // mpz_set_ui( base, 2^mp_bits_per_limb );
+    mpz_ui_pow_ui( base, 2, mp_bits_per_limb );
+    int inputAvailable = readTuple( n, rop );
+    while ( inputAvailable == INPUT_YES ) {
+
+      printf("Lol1\n");
+      zn_mont_rho_sq( rho_sq, rop[1] );
+      printf("Lol2\n");
+      zn_mont_omega( omega, rop[1], base );
+      printf("Lol3\n");
+      zn_mont_mul ( output1, rop[0], rho_sq, rop[1], base, omega );
+      printf("Lol4\n");
+      zn_mont_mul ( output, output1, one, rop[1], base, omega );
+      printf("Lol5\n");
+
+      inputAvailable = readTuple( n, rop );
+    }
+    for ( int i = 0; i < n; ++i ) {
+      mpz_clear( rop[i] );
+    } mpz_clear( rho_sq ); mpz_clear( omega ); mpz_clear( output );
+    mpz_clear( output1 ); mpz_clear( one );
+
+
+
+
+    // char readBuffer[IN_BUFF_SIZE];
     // int feedback = readLine ( readBuffer, sizeof ( readBuffer ) );
     // char binBuffer[4*(IN_BUFF_SIZE-1) + 1];
     // readHexToBin(readBuffer, binBuffer);
@@ -500,19 +681,22 @@ int main( int argc, char* argv[] ) {
     // fprintf(stdout, "%s\n", binBuffer);
 
 
-    readBuffer[0] = 'A';
-    readBuffer[1] = 'b';
-    readBuffer[2] = 'c';
-    readBuffer[3] = 'd';
-    readBuffer[4] = 'E';
-    readBuffer[5] = '\0';
+    // readBuffer[0] = 'A';
+    // readBuffer[1] = 'b';
+    // readBuffer[2] = 'c';
+    // readBuffer[3] = 'd';
+    // readBuffer[4] = 'E';
+    // readBuffer[5] = '\0';
 
-    char buffer[WINDOW_SIZE];
-    memcpy( buffer, &readBuffer[1], (3-1)+1 );
-    buffer[(3-1)+1] = '\0';
+    // char buffer[WINDOW_SIZE];
+    // memcpy( buffer, &readBuffer[1], (3-1)+1 );
+    // buffer[(3-1)+1] = '\0';
 
-    int len = strlen(readBuffer);
-    fprintf(stdout, "%s, %d\n", buffer, len);
+    // int len = strlen(readBuffer);
+    // fprintf(stdout, "%s, %d\n", buffer, len);
+
+    // int alla = getSeed ( readBuffer );
+    // fprintf(stderr, "%d\n", alla);
   }
 
   return 0;

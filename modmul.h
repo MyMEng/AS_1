@@ -9,6 +9,9 @@
 
 #include   <math.h>
 
+// #include  <fcntl.h>
+#include <openssl/rand.h>
+
 #include    <gmp.h>
 
 // Reading from stdin constants
@@ -24,5 +27,9 @@
 
 // sliding window exponentiation
 #define WINDOW_SIZE 4
+
+// yes / no structure
+#define OK 1
+#define NO 0
 
 #endif
