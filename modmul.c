@@ -196,14 +196,14 @@ int getSeed ( char *randomBinStr ) {
 // MONTGOMERY
 void zn_mont_rho_sq ( mpz_t output, mpz_t modulus ) {
   // initialize to 1
-  mpz_set_d ( output, 1 );
+  mpz_set_ui ( output, 1 );
   // initialize variables
   //   The number of bits per limb
   //   Global Constant: const int mp_bits_per_limb = w
   //   size_t mpz_size (const mpz_t op)
   long int l_N = mpz_size ( modulus );
 
-  for ( long int i = 1; i < 2 * l_N * mp_bits_per_limb; ++i ) {
+  for ( long int i = 1; i <= 2 * l_N * mp_bits_per_limb; ++i ) {
     mpz_add( output, output, output );
     mpz_mod( output, output, modulus );
   }
@@ -213,13 +213,14 @@ void zn_mont_omega ( mpz_t output, mpz_t modulus, mpz_t base ) {
   // initialize to 1
   mpz_set_d ( output, 1 );
   // Global Constant: const int mp_bits_per_limb = w
-  for ( int i = 1; i < mp_bits_per_limb-1; ++i ) {
+  for ( int i = 1; i <= mp_bits_per_limb-1; ++i ) {
     mpz_mul ( output, output, output );
     mpz_mod ( output, output, base );
     mpz_mul ( output, output, modulus );
     mpz_mod ( output, output, base );
   }
-  mpz_ui_sub ( output, 0, output );
+  mpz_neg( output, output );
+  mpz_mod( output, output, base );
 }
 
 void zn_mont_mul ( mpz_t output, mpz_t x, mpz_t y, mpz_t N, mpz_t base, mpz_t omega ) {
@@ -230,34 +231,50 @@ void zn_mont_mul ( mpz_t output, mpz_t x, mpz_t y, mpz_t N, mpz_t base, mpz_t om
   mpz_t u;
   mpz_init2( u, 1024 );
 
-  mp_limb_t addOn = 1;
-  mp_limb_t *output_0 = output->_mp_d; // & mpz_getlimbn ( output, 0 );
-  mp_limb_t *x_0 = x->_mp_d; // & mpz_getlimbn ( x, 0 );
+  mp_limb_t *output_0 = output->_mp_d;
+  mp_limb_t *x_0 = x->_mp_d;
   mp_limb_t *y_i = y->_mp_d;
   mp_limb_t *u_i = u->_mp_d;
+  mp_limb_t addOn = 1;
+  mp_limb_t temp0;
+  mp_limb_t temp1;
   int carry;
   int carryInd = 1;
 
-  for ( long int i = 0; i < l_N-1; ++i ) {
+  for ( long int i = 0; i <= l_N-1; ++i ) {
+    output_0 = output->_mp_d;
+    x_0 = x->_mp_d;
+    y_i = y->_mp_d;
+    u_i = u->_mp_d;
+
+
     printf("LO3.1\n");
     // assign u
-    mpz_set_d ( u, 0 );
+                mpz_set_d ( u, 0 );
     printf("LO3.2\n");
     //   y_i * x_0
     // u = y_i[i] * x_0[0]
-    mpn_mul ( u_i, y_i, i, x_0, 0);
+    temp0 = y_i[i];
+    temp1 = x_0[0];
+    mpn_mul ( u_i, &temp0, 1, &temp1, 1);
     printf("LO3.2\n");
     // u = u_i[0] + output_0[0]
-    carry = mpn_add (u_i, u_i, 0, output_0, 0);
-    printf("LO3.3\n");
-    while ( carry == 1 ) {
-      carry = mpn_add (u_i, u_i, carryInd, &addOn, 0);
-      ++carryInd;
-    } carryInd = 1;
+    // temp0 = u_i[0];
+    temp1 = output_0[0];
+    // carry = mpn_add (u_i, &temp0, 1, &temp1, 1); // 0,0
+    // printf("LO3.3\n");
+    // while ( carry == 1 ) {
+      // temp0 = u_i[carryInd];
+      // carry = mpn_add (u_i, &temp0, 1, &addOn, 1);
+      // ++carryInd;
+    // } carryInd = 1;
+    mpz_add_ui ( u, u, temp1 );
     printf("LO3.4\n");
 
     mpz_mul ( u, u, omega );
     mpz_mod ( u , u, base );
+
+    gmp_printf("u: %Zd\n", u);
 
     // assign output
     mpz_mul( u, u, N );
@@ -269,6 +286,12 @@ void zn_mont_mul ( mpz_t output, mpz_t x, mpz_t y, mpz_t N, mpz_t base, mpz_t om
     mpz_mul( u, u, x );
 
     mpz_add( output, output, u );
+
+                  // is there any reminder left
+                  mpz_t reminder; mpz_init(reminder);
+                  mpz_cdiv_r ( reminder, output, base );
+                  gmp_printf("Reminder: %Zd\n", reminder);
+                  mpz_clear(reminder);
 
     mpz_cdiv_q ( output, output, base );
   }
@@ -645,7 +668,7 @@ int main( int argc, char* argv[] ) {
     mpz_t omega; mpz_init( omega );
     mpz_t output; mpz_init( output );
     mpz_t output1; mpz_init( output1 );
-    mpz_t one; mpz_init( one );
+    mpz_t one; mpz_init2( one, 1024 );
     mpz_set_ui( one, 1 );
     mpz_t base; mpz_init( base );
     // mpz_set_ui( base, 2^mp_bits_per_limb );
@@ -660,8 +683,14 @@ int main( int argc, char* argv[] ) {
       printf("Lol3\n");
       zn_mont_mul ( output1, rop[0], rho_sq, rop[1], base, omega );
       printf("Lol4\n");
-      zn_mont_mul ( output, output1, one, rop[1], base, omega );
+      zn_mont_mul ( output, one, output1, rop[1], base, omega );
       printf("Lol5\n");
+
+      int feedback = mpz_cmp(rop[0], output );
+      printf("Feedback is: %d\n", feedback);
+      gmp_printf("In: %Zd\n",  rop[0]);
+      gmp_printf("Rho: %Zd\n",  rop[0]);
+      gmp_printf("Out: %Zd\n",  output);
 
       inputAvailable = readTuple( n, rop );
     }
