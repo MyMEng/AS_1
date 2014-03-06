@@ -137,8 +137,6 @@ void slidingWindow ( mpz_t result, mpz_t base, char *exp, mpz_t mod ) {
   int ind = pow(2, WINDOW_SIZE);
   mpz_t lookup[ind/2];
 
-  // Montgomery's Ladder to defend against side-channel attacks
-
   // lookup table
   //   base multiplier
   mpz_t b_sq; mpz_init( b_sq );
@@ -180,6 +178,7 @@ void slidingWindow ( mpz_t result, mpz_t base, char *exp, mpz_t mod ) {
       u = strtol( buffer, NULL, 2 );
     }
 
+    // Montgomery's Ladder to defend against side-channel attacks ??
     // mpz_powm_ui ( result, result, (int)pow(2, (i-l+1)), mod );
     for ( int n = 0; n < i-l+1; ++n ) {
       mpz_powm_ui ( result, result, 2, mod );
@@ -238,6 +237,8 @@ void zn_mont_omega ( mpz_t output, mpz_t modulus, mpz_t base ) {
 
 void zn_mont_mul ( mpz_t output, mpz_t x, mpz_t y, mpz_t N, mpz_t base, mpz_t omega ) {
   // initialize to 0
+  // mpz_t output;
+  // mpz_init( output );
   mpz_set_d ( output, 0 );
   long int l_N = mpz_size ( N );
   // initialize temporary variable
@@ -275,13 +276,16 @@ void zn_mont_mul ( mpz_t output, mpz_t x, mpz_t y, mpz_t N, mpz_t base, mpz_t om
     mpz_mul( u, u, x );
     mpz_add( output, output, u );
     // bitwise right shift with base = 2^ mp_bits_per_limb
-    // mpz_cdiv_q ( output, output, base );
-    mpz_tdiv_q_2exp ( output, output, mp_bits_per_limb );
+    mpz_cdiv_q ( output, output, base );
+    // mpz_tdiv_q_2exp ( output, output, mp_bits_per_limb );
   }
   if ( mpz_cmp( output, N ) >= 0 ) {
     mpz_sub( output, output, N );
   }
+
+  // mpz_set( o, output );
   mpz_clear( u );
+  // mpz_clear( output );
 }
 
 // do not use --- testing purpose
@@ -689,6 +693,10 @@ int main( int argc, char* argv[] ) {
       zn_mont_mul ( output1, rop[0], rho_sq, rop[1], base, omega );
       zn_mont_mul ( output, one, output1, rop[1], base, omega );
 
+      printf("Comparing...\n");
+      if ( mpz_cmp(rop[0], output ) == 0 ) {
+        fprintf ( stdout, "Montgomery multiplication OK!\n" );
+      }
       if ( mpz_cmp(rop[0], output ) != 0 ) {
         fprintf ( stderr, "Montgomery multiplication not working!\n" );
       }
