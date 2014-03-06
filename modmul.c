@@ -250,13 +250,16 @@ void zn_mont_mul ( mpz_t output, mpz_t x, mpz_t y, mpz_t N, mpz_t base, mpz_t om
 
     printf("LO3.1\n");
     // assign u
-                mpz_set_d ( u, 0 );
+                // mpz_set_d ( u, 0 );
     printf("LO3.2\n");
     //   y_i * x_0
     // u = y_i[i] * x_0[0]
     temp0 = y_i[i];
     temp1 = x_0[0];
-    mpn_mul ( u_i, &temp0, 1, &temp1, 1);
+              // mpn_mul ( u_i, &temp0, 1, &temp1, 1);
+    mpz_set_ui( u, temp0 );
+    mpz_mul_ui( u, u, temp1 );
+
     printf("LO3.2\n");
     // u = u_i[0] + output_0[0]
     // temp0 = u_i[0];
