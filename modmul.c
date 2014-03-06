@@ -76,7 +76,7 @@ static int readLine (char *buffer, size_t buffSize) {
   return INPUT_YES;
 }
 
-// how to quickly do exponentiation mod n
+// read input string to mpz_t structure
 void readIn ( mpz_t rop, const char *inputStr, int base ) {
 
   int check = mpz_set_str (rop, inputStr, base);
@@ -135,12 +135,24 @@ void slidingWindow ( mpz_t result, mpz_t base, char *exp, mpz_t mod ) {
 
   int ind = pow(2, WINDOW_SIZE);
   mpz_t lookup[ind/2];
+
   // Montgomery's Ladder to defend against side-channel attacks
-  for ( int i = 0; i < ind/2; ++i ) {
+
+  // lookup table
+  //   base multiplier
+  mpz_t b_sq; mpz_init( b_sq );
+  mpz_powm_ui( b_sq, base, 2, mod );
+  // do first step outside the loop
+  mpz_init( lookup[0] );
+  mpz_set( lookup[0], base );
+  for ( int i = 1; i < ind/2; ++i ) {
     mpz_init( lookup[i] );
     // precomputed lookup table
-    mpz_powm_ui ( lookup[i], base, (2*i+1), mod );
+    // mpz_powm_ui ( lookup[i], base, (2*i+1), mod );
+    mpz_mul( lookup[i], lookup[i-1], b_sq );
+    mpz_mod( lookup[i], lookup[i], mod );
   }
+  mpz_clear( b_sq );
   // initialize 'result' to identity element a.k.a. 1
   mpz_set_d ( result, 1 );
 
@@ -167,7 +179,12 @@ void slidingWindow ( mpz_t result, mpz_t base, char *exp, mpz_t mod ) {
       u = strtol( buffer, NULL, 2 );
     }
 
-    mpz_powm_ui ( result, result, (int)pow(2, (i-l+1)), mod );
+    // mpz_powm_ui ( result, result, (int)pow(2, (i-l+1)), mod );
+    for ( int n = 0; n < i-l+1; ++n ) {
+      mpz_powm_ui ( result, result, 2, mod );
+    }
+
+
     if ( u != 0 ) {
       mpz_mul ( result, result, lookup[ (int)floor((u-1)/2) ] );
       // result mod n
@@ -258,7 +275,9 @@ void zn_mont_mul ( mpz_t output, mpz_t x, mpz_t y, mpz_t N, mpz_t base, mpz_t om
     mpz_set_ui ( u, y_i[i] );
     mpz_mul( u, u, x );
     mpz_add( output, output, u );
-    mpz_cdiv_q ( output, output, base );
+    // bitwise right shift with base = 2^ mp_bits_per_limb
+    // mpz_cdiv_q ( output, output, base );
+    mpz_tdiv_q_2exp ( output, output, mp_bits_per_limb );
   }
   if ( mpz_cmp( output, N ) >= 0 ) {
     mpz_sub( output, output, N );
@@ -266,7 +285,7 @@ void zn_mont_mul ( mpz_t output, mpz_t x, mpz_t y, mpz_t N, mpz_t base, mpz_t om
   mpz_clear( u );
 }
 
-// untested --- do not use
+// do not use --- testing purpose
 void zn_mont_red ( mpz_t output, mpz_t t, mpz_t N, mpz_t base, mpz_t omega ) {
   // helper variable
   mpz_t u;
@@ -306,6 +325,7 @@ void zn_mont_red ( mpz_t output, mpz_t t, mpz_t N, mpz_t base, mpz_t omega ) {
   mpz_clear( v );
 }
 
+// do not use --- testing purpose
 void zn_mont_exp ( mpz_t result, mpz_t xi, char *exp, mpz_t N, mpz_t base, mpz_t rho_sq, mpz_t omega ) {
   mpz_t t, x, one, temp;
   mpz_init( t ); mpz_init( x ); mpz_init( one ); mpz_init( temp ); mpz_set_ui( one, 1 );
