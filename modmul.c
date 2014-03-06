@@ -1,8 +1,9 @@
 #include "modmul.h"
 
 // define lookup table for hex->bin
-const char hexBin[16][4] = { "0000", "0001", "0010", "0011", "0100", "0101", "0110",
-  "0111", "1000", "1001", "1010", "1011", "1100", "1101", "1110", "1111" } ;
+const char hexBin[16][4] = { "0000", "0001", "0010", "0011", "0100", "0101",
+  "0110", "0111", "1000", "1001", "1010", "1011", "1100", "1101", "1110",
+  "1111" } ;
 
 // read in hex representation as binary into an array
 void readHexToBin ( char *hex, char *bin ) {
@@ -183,8 +184,6 @@ void slidingWindow ( mpz_t result, mpz_t base, char *exp, mpz_t mod ) {
     for ( int n = 0; n < i-l+1; ++n ) {
       mpz_powm_ui ( result, result, 2, mod );
     }
-
-
     if ( u != 0 ) {
       mpz_mul ( result, result, lookup[ (int)floor((u-1)/2) ] );
       // result mod n
@@ -328,7 +327,10 @@ void zn_mont_red ( mpz_t output, mpz_t t, mpz_t N, mpz_t base, mpz_t omega ) {
 // do not use --- testing purpose
 void zn_mont_exp ( mpz_t result, mpz_t xi, char *exp, mpz_t N, mpz_t base, mpz_t rho_sq, mpz_t omega ) {
   mpz_t t, x, one, temp;
-  mpz_init( t ); mpz_init( x ); mpz_init( one ); mpz_init( temp ); mpz_set_ui( one, 1 );
+
+  mpz_init( t ); mpz_init( x ); mpz_init( one );
+  mpz_init( temp ); mpz_set_ui( one, 1 );
+
   zn_mont_mul( t, one, rho_sq, N, base, omega );
   zn_mont_mul( x, xi, rho_sq, N, base, omega );
 
