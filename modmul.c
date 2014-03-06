@@ -89,9 +89,8 @@ void readIn ( mpz_t rop, const char *inputStr, int base ) {
   } // else OK
 }
 
-// read n-tuple
-// int readTuple ( const int n, mpz_t *reader, const int ex, char *exp ) {
-int readTuple ( const int n, mpz_t *reader ) {
+// read n-tuple | together with binary representations of exponents
+int readTuple ( const int n, mpz_t *reader, int ex1, char *exp1, int ex2, char *exp2 ) {
   // set the buffer for input for 256 characters + new line character
   // remember n-tuple
   char readBuffer[n][IN_BUFF_SIZE];
@@ -116,12 +115,13 @@ int readTuple ( const int n, mpz_t *reader ) {
     // do_operation on numbers with GMP
     for (int i = 0; i < n; ++i) {
       readIn( reader[i], readBuffer[i], INPUT_FORMAT );
-      // gmp_printf( "%Zd \n", reader[i] );
 
       // additionally read in exponent as a binary string
-      // if ( i == ex ) {
-        // readHexToBin(readBuffer[i], exp);
-      // }
+      if ( i == ex1 ) {
+        readHexToBin( readBuffer[i], exp1 );
+      } else if ( i == ex2 ) {
+        readHexToBin( readBuffer[i], exp2 );
+      }
     }
   }
 
@@ -364,8 +364,8 @@ void stage1() {
   char *hexOut = NULL;
 
   // binary representation of exponent
-  // char binExp[4*(IN_BUFF_SIZE-1) + 1];
-  char *binExp = NULL;
+  char binExp[4*(IN_BUFF_SIZE-1) + 1];
+  // char *binExp = NULL;
 
   mpz_t rop[n];
   for (int i = 0; i < n; ++i) {
@@ -375,14 +375,13 @@ void stage1() {
   mpz_init( output );
 
   // for 3-tuple --- N, e, m
-  int inputAvailable = readTuple( n, rop );
-  // int inputAvailable = readTuple( n, rop, 1, binExp );
+  int inputAvailable = readTuple( n, rop, 1, binExp, -1, NULL );
   // 1 is parameter which defines which one is exponent
   while ( inputAvailable == INPUT_YES ) {
 
     // raise to power
     // mpz_powm ( output, rop[2], rop[1], rop[0] );
-    binExp = mpz_get_str (binExp, 2, rop[1]);
+    // binExp = mpz_get_str (binExp, 2, rop[1]);
     slidingWindow( output, rop[2], binExp, rop[0] );
 
     // convert to hex back again | NOT SAFE ????????????????????????M+ NULL ??
@@ -390,12 +389,13 @@ void stage1() {
     fprintf( stdout, "%s\n", hexOut );
 
     // check for another input
-    inputAvailable = readTuple( n, rop );
+    inputAvailable = readTuple( n, rop, 1, binExp, -1, NULL );
   }
 
   for ( int i = 0; i < n; ++i ) {
     mpz_clear( rop[i] );
-  } mpz_clear( output ); free( hexOut ); free ( binExp );
+  } mpz_clear( output ); free( hexOut );
+  // free ( binExp );
 }
 
 /*
@@ -418,9 +418,9 @@ void stage2() {
   int comparison;
 
   // binary representation of exponent
-  // char binExp0[4*(IN_BUFF_SIZE-1) + 1];
-  // char binExp1[4*(IN_BUFF_SIZE-1) + 1];
-  char *binExp = NULL;
+  char binExp0[4*(IN_BUFF_SIZE-1) + 1];
+  char binExp1[4*(IN_BUFF_SIZE-1) + 1];
+  // char *binExp = NULL;
 
   // GMP representation of numbers
   mpz_t rop[n];
@@ -432,18 +432,18 @@ void stage2() {
   }
 
   // for 9-tuple --- N, d, p, q, d_p, d_q, i_p, i_q and c
-  int inputAvailable = readTuple( n, rop );
+  int inputAvailable = readTuple( n, rop, 4, binExp0, 5, binExp1 );
   while ( inputAvailable == INPUT_YES ) {
 
     // use CRT to decrypt message
     //   calculate first part
     // mpz_powm ( output[0], rop[8], rop[4], rop[2] );
-    binExp = mpz_get_str (binExp, 2, rop[4]);
-    slidingWindow ( output[0], rop[8], binExp, rop[2] );
+    // binExp = mpz_get_str (binExp, 2, rop[4]);
+    slidingWindow ( output[0], rop[8], binExp0, rop[2] );
     //   calculate second part
     // mpz_powm ( output[1], rop[8], rop[5], rop[3] );
-    binExp = mpz_get_str (binExp, 2, rop[5]);
-    slidingWindow ( output[1], rop[8], binExp, rop[3] );
+    // binExp = mpz_get_str (binExp, 2, rop[5]);
+    slidingWindow ( output[1], rop[8], binExp1, rop[3] );
 
     //   check which part is bigger
     comparison = mpz_cmp ( output[0], output[1] );
@@ -488,21 +488,21 @@ void stage2() {
       mpz_add( output[2], output[2], output[0] );
     }
 
-    // convert to hex back again
     // convert to hex back again | NOT SAFE ????????????????????????M+ NULL ????
     hexOut = mpz_get_str (hexOut, 16, output[2]);
     // gmp_printf( "%Zd \n", output );
     fprintf( stdout, "%s\n", hexOut );
 
     // check for another input
-    inputAvailable = readTuple( n, rop );
+    inputAvailable = readTuple( n, rop, 4, binExp0, 5, binExp1 );
   }
 
   for ( int i = 0; i < n; ++i ) {
     mpz_clear( rop[i] );
   } for (int i = 0; i < 3; ++i) {
     mpz_clear( output[i] );
-  } free( hexOut ); free( binExp );
+  } free( hexOut );
+  // free( binExp );
 }
 
 /*
@@ -539,7 +539,7 @@ void stage3() {
   // char randomState[(IN_BUFF_SIZE-1)*4 + 1];
 
   // for 5-tuple
-  int inputAvailable = readTuple( n, rop );
+  int inputAvailable = readTuple( n, rop, -1, NULL, -2, NULL );
   while ( inputAvailable == INPUT_YES ) {
 
     // generate ephemeral key 'y' in range 1 --- q-1  equivalent to(rop[1]-1)
@@ -572,14 +572,15 @@ void stage3() {
     }
 
     // check for another input
-    inputAvailable = readTuple( n, rop );
+    inputAvailable = readTuple( n, rop, -1, NULL, -2, NULL );
   }
 
   for ( int i = 0; i < n; ++i ) {
     mpz_clear( rop[i] );
   } for (int i = 0; i < 2; ++i) {
     mpz_clear( output[i] );
-  }  mpz_clear( y ); free( hexOut ); free( binExp );
+  }  mpz_clear( y ); free( hexOut );
+  free( binExp );
   gmp_randclear( randomState );
 }
 
@@ -611,14 +612,14 @@ void stage4() {
   mpz_t output; mpz_init( output );
 
   // for 5-tuple
-  int inputAvailable = readTuple( n, rop );
+  int inputAvailable = readTuple( n, rop, -1, NULL, -2, NULL );
   while ( inputAvailable == INPUT_YES ) {
 
     // calculate shared secret --- avoid division | calculate (p-1)-x as exp
     mpz_sub_ui( output, rop[0], 1 );
     mpz_sub ( output, output, rop[3]);
     // mpz_powm ( output, rop[4], output, rop[0] );
-    binExp = mpz_get_str (binExp, 2, output);
+    binExp = mpz_get_str ( binExp, 2, output );
     slidingWindow( output, rop[4], binExp, rop[0] );
 
     // decrypt
@@ -631,12 +632,13 @@ void stage4() {
     fprintf( stdout, "%s\n", hexOut );
 
     // check for another input
-    inputAvailable = readTuple( n, rop );
+    inputAvailable = readTuple( n, rop, -1, NULL, -2, NULL );
   }
 
   for ( int i = 0; i < n; ++i ) {
     mpz_clear( rop[i] );
-  } mpz_clear( output ); free( hexOut ); free( binExp );
+  } mpz_clear( output ); free( hexOut );
+  free( binExp );
 }
 
 /*
@@ -677,7 +679,7 @@ int main( int argc, char* argv[] ) {
     mpz_t base; mpz_init( base );
     // mpz_set_ui( base, 2^mp_bits_per_limb );
     mpz_ui_pow_ui( base, 2, mp_bits_per_limb );
-    int inputAvailable = readTuple( n, rop );
+    int inputAvailable = readTuple( n, rop, -1, NULL, -2, NULL );
     while ( inputAvailable == INPUT_YES ) {
 
       zn_mont_rho_sq( rho_sq, rop[1] );
@@ -689,7 +691,7 @@ int main( int argc, char* argv[] ) {
         fprintf ( stderr, "Montgomery multiplication not working!\n" );
       }
 
-      inputAvailable = readTuple( n, rop );
+      inputAvailable = readTuple( n, rop, -1, NULL, -2, NULL );
     }
     for ( int i = 0; i < n; ++i ) {
       mpz_clear( rop[i] );
