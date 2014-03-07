@@ -409,7 +409,7 @@ void stage1() {
     // precompute omega and rho
     zn_mont_rho_sq( rho, rop[0] );
     zn_mont_omega( omega, rop[0], base );
-    // get base and x in Montgomery
+    // get x in Montgomery
     zn_mont_mul( x_m, rop[2], rho, rop[0], base, omega );
 
     // raise to the power
@@ -469,9 +469,20 @@ void stage2() {
     mpz_init( output[i] );
   }
 
+  mpz_t omega, rho, base, one, temp;
+  mpz_init( omega ); mpz_init( rho ); mpz_init( base ); mpz_init( temp );
+  mpz_init2( one, 1024 );
+
+  mpz_set_ui( one, 1 );
+  mpz_ui_pow_ui( base, 2, mp_bits_per_limb );
+
   // for 9-tuple --- N, d, p, q, d_p, d_q, i_p, i_q and c
   int inputAvailable = readTuple( n, rop, 4, binExp0, 5, binExp1 );
   while ( inputAvailable == INPUT_YES ) {
+
+    // precompute omega and rho
+    zn_mont_rho_sq( rho, rop[0] );
+    zn_mont_omega( omega, rop[0], base );
 
     // use CRT to decrypt message
     //   calculate first part
@@ -617,9 +628,8 @@ void stage3() {
     mpz_clear( rop[i] );
   } for (int i = 0; i < 2; ++i) {
     mpz_clear( output[i] );
-  }  mpz_clear( y ); free( hexOut );
-  free( binExp );
-  gmp_randclear( randomState );
+  }  mpz_clear( y ); gmp_randclear( randomState );
+  free( hexOut ); free( binExp ); 
 }
 
 /*
@@ -647,26 +657,44 @@ void stage4() {
   for (int i = 0; i < n; ++i) {
     mpz_init( rop[i] );
   }
-  mpz_t output; mpz_init( output );
+
+  mpz_t omega, rho, base, x_m, y_m, one, temp, output;
+  mpz_init( omega ); mpz_init( rho ); mpz_init( base ); mpz_init( x_m );
+  mpz_init( temp ); mpz_init( output ); mpz_init( y_m );
+  mpz_init2( one, 1024 );
+
+  mpz_set_ui( one, 1 );
+  mpz_ui_pow_ui( base, 2, mp_bits_per_limb );
 
   // for 5-tuple
   int inputAvailable = readTuple( n, rop, -1, NULL, -2, NULL );
   while ( inputAvailable == INPUT_YES ) {
+
+    // precompute omega and rho
+    zn_mont_rho_sq( rho, rop[0] );
+    zn_mont_omega( omega, rop[0], base );
+    // get x in Montgomery
+    zn_mont_mul( x_m, rop[4], rho, rop[0], base, omega );
+    zn_mont_mul( y_m, rop[5], rho, rop[0], base, omega );
 
     // calculate shared secret --- avoid division | calculate (p-1)-x as exp
     mpz_sub_ui( output, rop[0], 1 );
     mpz_sub ( output, output, rop[3]);
     // mpz_powm ( output, rop[4], output, rop[0] );
     binExp = mpz_get_str ( binExp, 2, output );
-      // slidingWindow( output, rop[4], binExp, rop[0] );
+    // slidingWindow( output, rop[4], binExp, rop[0] );
+    slidingWindow( temp, x_m, binExp, rop[0], omega, base, one, rho );
 
     // decrypt
-    mpz_mul ( output, output, rop[5] );
-    mpz_mod ( output, output, rop[0] );
+    // mpz_mul ( output, output, rop[5] );
+    // mpz_mod ( output, output, rop[0] );
+    zn_mont_mul( output, temp, y_m, rop[0], base, omega );
 
-    // gmp_printf( "%Zd \n", output );
-    // convert to hex back again | NOT SAFE ????????????????????????M+ NULL ??
-    hexOut = mpz_get_str (hexOut, INPUT_FORMAT, output);
+    // get back from Montgomery form
+    zn_mont_mul( temp, output, one, rop[0], base, omega );
+
+    // convert to hex back again
+    hexOut = mpz_get_str (hexOut, INPUT_FORMAT, temp);
     fprintf( stdout, "%s\n", hexOut );
 
     // check for another input
@@ -675,8 +703,10 @@ void stage4() {
 
   for ( int i = 0; i < n; ++i ) {
     mpz_clear( rop[i] );
-  } mpz_clear( output ); free( hexOut );
-  free( binExp );
+  }
+  mpz_clear( output ); mpz_clear( omega ); mpz_clear( rho ); mpz_clear( base );
+  mpz_clear( x_m ); mpz_clear( y_m ); mpz_clear( one ); mpz_clear( temp );
+  free( hexOut ); free( binExp );
 }
 
 /*
