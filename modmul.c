@@ -603,10 +603,8 @@ void stage3() {
   int n = 5;
   // and output stream
   char *hexOut = NULL;
-
-  // binary representation of exponent
-  // char binExp[4*(IN_BUFF_SIZE-1) + 1];
-  // char *binExp = NULL;
+  // upper bound on random number
+  char *upperBound = NULL;
 
   mpz_t rop[n];
   for (int i = 0; i < n; ++i) {
@@ -617,9 +615,13 @@ void stage3() {
     mpz_init( output[i] );
   }
 
-  mpz_t omega, rho, base, x_m, y_m, z_m, one, temp;
+  // testing ephemeral key
+  // mpz_t y; mpz_init2( y, 1024); mpz_set_ui ( y, 1 ); 
+  // char *ephemeral1 = mpz_get_str( NULL, 2, y );
+
+  mpz_t omega, rho, base, x_m, y_m, z_m, one, temp, key;
   mpz_init( omega ); mpz_init( rho ); mpz_init( base ); mpz_init( x_m );
-  mpz_init( temp ); mpz_init( y_m ); mpz_init( z_m );
+  mpz_init( temp ); mpz_init( y_m ); mpz_init( z_m ); mpz_init( key );
   mpz_init2( one, 1024 );
 
   mpz_set_ui( one, 1 );
@@ -642,8 +644,6 @@ void stage3() {
   if ( feedback != 1 ) {
     fprintf(stderr, "SSL has been seeded with too little data.\n" );
   }
-  // mpz_t y; mpz_init( y ); gmp_randstate_t randomState;
-
 
   // for 5-tuple
   int inputAvailable = readTuple( n, rop, -1, NULL, -2, NULL );
@@ -657,49 +657,46 @@ void stage3() {
     zn_mont_mul( y_m, rop[3], rho, rop[0], base, omega );
     zn_mont_mul( z_m, rop[4], rho, rop[0], base, omega );
 
-    // generate ephemeral key 'y' in range 1 --- q-1  equivalent to(rop[1]-1)
-    // mpz_set_ui ( y, 1 ); // testing purpose
-    // gmp_randinit_default ( randomState );
-    // if random to big generate new one
-    // mpz_urandomm ( y, randomState, rop[1] );
-    // binExp = mpz_get_str (binExp, 2, y);
-    //   get randomness from given seed
-    feedback = RAND_bytes( random, size );
-    if ( feedback != 1 ) {
-      fprintf(stderr, "Not enough randomness for next number.\n" );
-    }
-    for ( int i = 0; i < size; ++i ) {
-      for ( int j = 7; j >= 0; --j ) {
-        binExp[i*8 + 7-j] =  (char) ( ( (int)'0' ) + ((random[i]>>j)&1));
+    // generate ephemeral key 'y' in range 1 -- (q-1) | (equivalent to rop[1]-1)
+    //   if random to big generate new one
+    do {
+      feedback = RAND_bytes( random, size );
+      if ( feedback != 1 ) {
+        fprintf(stderr, "Not enough randomness for next number.\n" );
       }
-    }
-    // printf("\n\n%s\n\n", binExp);
-    // binExp = randomState;
+      for ( int i = 0; i < size; ++i ) {
+        for ( int j = 7; j >= 0; --j ) {
+          binExp[i*8 + 7-j] =  (char) ( ((int)'0') + ((random[i]>>j)&1) );
+        }
+      }
+      feedback = mpz_set_str ( key, binExp, 2 );
+      // check validity of input
+      if ( feedback == -1 ) {
+        // couldn't read number in
+        fprintf( stderr, "Could not import KEY into mpz_t.\n" );
+      } // else OK
+      // printf( "Generating KEY.\n" );
+    } while ( mpz_cmp( rop[1], key ) > 0  && mpz_cmp_ui( key, 1 ) >= 0 );
 
     // converts his secret message m, into an element m, of G
+    //  no need
 
-    // compute first part of cipher
-    // mpz_powm ( output[0], rop[2], y, rop[0] );
-    // slidingWindow ( output[0], rop[2], binExp, rop[0] );
+    // compute first part of cipher | ephemeral1
     slidingWindow ( temp, x_m, binExp, rop[0], omega, base, one, rho );
 
     // convert back --- won't be needed any more
-    zn_mont_mul( output[0], temp, one, rop[0], base, omega );
+    zn_mont_mul ( output[0], temp, one, rop[0], base, omega );
 
-    // prepare base for second component
-    // mpz_powm ( output[1], rop[3], y, rop[0] );
-    // slidingWindow ( output[1], rop[3], binExp, rop[0] );
+    // prepare base for second component | ephemeral1
     slidingWindow ( output[1], y_m, binExp, rop[0], omega, base, one, rho );
 
     // calculate encryption
-    // mpz_mul ( output[1], rop[4], output[1] );
-    // mpz_mod( output[1], output[1], rop[0] );
-    zn_mont_mul( temp, output[1], z_m, rop[0], base, omega );
+    zn_mont_mul ( temp, output[1], z_m, rop[0], base, omega );
 
     // convert back --- won't be needed any more
-    zn_mont_mul( output[1], temp, one, rop[0], base, omega );
+    zn_mont_mul ( output[1], temp, one, rop[0], base, omega );
 
-    // convert to hex back again
+    // convert to hex back again and print
     for (int i = 0; i < 2; ++i) {
       hexOut = mpz_get_str (hexOut, INPUT_FORMAT, output[i]);
       fprintf( stdout, "%s\n", hexOut );
@@ -716,9 +713,9 @@ void stage3() {
   }
   mpz_clear( omega ); mpz_clear( rho ); mpz_clear( base ); mpz_clear( x_m );
   mpz_clear( temp ); mpz_clear( y_m ); mpz_clear( z_m ); mpz_clear( one );
-  free( hexOut );
-  // free( binExp );
-  // mpz_clear( y ); gmp_randclear( randomState );
+  mpz_clear( key );
+  free( hexOut ); free( upperBound );
+  // mpz_clear( y ); free( ephemeral1 );
 }
 
 /*

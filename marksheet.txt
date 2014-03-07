@@ -32,6 +32,7 @@ and what isn't:
  * Parts of code available at 'wiki.openssl.org/index.php/Random_Numbers'
    of OpenSSL (1.0.1) implementation which allows to use Intel Secure technology
    were used.
+ * Libraries that facilitate use of Intel Secure technology.
 ]
 
 -------------------------------------------------------------------------------
@@ -72,11 +73,11 @@ source code) should go here:
 
 [
 * Avoid to compute inverse in Stage 4 by simple mathematical workaround.
-* Own implementation of random number generator for Stage 3. Seed from
+* Non standard implementation of random number generator for Stage 3. Seed from
   Intel's RDRAND and random values from SSL cryptographically secure random
   number generator.
 * In non-Montgomery-multiplication version of sliding window Montgomery's
-  Ladder is used to defend against side-channel attacks
+  Ladder is used to defend against side-channel attacks.
 ]
 
 -------------------------------------------------------------------------------
