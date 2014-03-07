@@ -428,7 +428,14 @@ void slidingWindowNOMO ( mpz_t result, mpz_t base, char *exp, mpz_t mod ) {
 
 
 // generate random seed
-int getSeed ( char *randomBinStr ) {
+int getSeed ( unsigned int bytes, unsigned char *randomBinStr ) {
+
+  // unsigned int bytes = 128;
+  // unsigned char seed[bytes];
+  int feedback = rdrand_get_bytes( bytes, randomBinStr );
+
+  return feedback;
+
   unsigned char *random_bytes = random_bytes = malloc((size_t)5 + 1);
   RAND_bytes(random_bytes, 5);
   *(random_bytes + 5) = '\0';
@@ -841,6 +848,28 @@ int main( int argc, char* argv[] ) {
   }
 
   // testing stage
+  else if ( !strcmp( argv[1], "randomness" ) ) {
+    unsigned int size = 128;
+    unsigned char seed[size];
+    int feedback = getSeed( size, seed );
+    for( int i = 0; i < size; ++i ) {
+      printf( "%x", seed[i] );
+    } printf("\nFeedback: %d\n", feedback);
+
+  char binary[1025];
+  binary[1024] = '\0';
+  // now bianry representation
+  for ( int i = 0; i < size; ++i ) {
+    for ( int j = 7; j >= 0; --j ) {
+      printf("%x", (seed[i]>>j)&1  );
+      binary[i*8 + 7-j] =  (char) ( ( (int)'0' ) + ((seed[i]>>j)&1));
+    }
+  }
+  printf("\n%s\n", binary);
+  
+
+  }
+
   else if( !strcmp( argv[ 1 ], "test" ) ) {
 
     // x, N

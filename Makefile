@@ -10,7 +10,7 @@
 # uncomment to use the newer, bespoke GMP installation
  CC_PATHS += -I/usr/local/gmp505/include/ 
  CC_PATHS += -L/usr/local/gmp505/lib/
- CC_LIBS  += -Wl,-Bstatic -lgmp -Wl,-Bdynamic
+ CC_LIBS  += librdrand.a -Wl,-Bstatic -lgmp -Wl,-Bdynamic
 
 all    : modmul
 

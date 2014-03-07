@@ -11,6 +11,7 @@
 
 // #include  <fcntl.h>
 #include <openssl/rand.h>
+ #include "rdrand.h"
 
 #include    <gmp.h>
 
