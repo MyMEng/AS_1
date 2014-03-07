@@ -357,6 +357,76 @@ void slidingWindow ( mpz_t result, mpz_t base, char *exp, mpz_t mod,
   } mpz_clear( temp ); mpz_clear(temp1);
 }
 
+
+// implementation of 2k-ary-slide-1exp --- before tuning in for Montgomery
+void slidingWindowNOMO ( mpz_t result, mpz_t base, char *exp, mpz_t mod ) {
+  // string buffer for bin to int
+  char buffer[WINDOW_SIZE];
+
+  int ind = pow(2, WINDOW_SIZE);
+  mpz_t lookup[ind/2];
+
+  // Montgomery's Ladder to defend against side-channel attacks
+
+  // lookup table
+  //   base multiplier
+  mpz_t b_sq; mpz_init( b_sq );
+  mpz_powm_ui( b_sq, base, 2, mod );
+  // do first step outside the loop
+  mpz_init( lookup[0] );
+  mpz_set( lookup[0], base );
+  for ( int i = 1; i < ind/2; ++i ) {
+    mpz_init( lookup[i] );
+    // precomputed lookup table
+    // mpz_powm_ui ( lookup[i], base, (2*i+1), mod );
+    mpz_mul( lookup[i], lookup[i-1], b_sq );
+    mpz_mod( lookup[i], lookup[i], mod );
+  }
+  mpz_clear( b_sq );
+  // initialize 'result' to identity element a.k.a. 1
+  mpz_set_d ( result, 1 );
+
+  // main loop
+  int l = 0;
+  int u = 0;
+  int i = strlen( exp ) - 1;
+  int beginning = i;
+  while ( i >= 0 ) {
+    if ( exp[beginning- i] == '0' ) {
+      l = i;
+      u = 0;
+    } else {
+      // l_+
+      l = i - WINDOW_SIZE + 1;
+      l = ( l < 0 ) ? 0 : l ;
+      while ( exp[beginning -l] == '0' ) {
+        ++l;
+      }
+      // must change sub set of l from string to integer
+      memcpy( buffer, &exp[beginning-i], i-l+1 );
+      buffer[(i-l)+1] = '\0';
+      // binary number in string to int
+      u = strtol( buffer, NULL, 2 );
+    }
+
+    // mpz_powm_ui ( result, result, (int)pow(2, (i-l+1)), mod );
+    for ( int n = 0; n < i-l+1; ++n ) {
+      mpz_powm_ui ( result, result, 2, mod );
+    }
+    if ( u != 0 ) {
+      mpz_mul ( result, result, lookup[ (int)floor((u-1)/2) ] );
+      // result mod n
+      mpz_mod ( result, result, mod );
+    }
+    i = l - 1;
+  }
+
+  for ( int i = 0; i < ind/2; ++i ) {
+    mpz_clear( lookup[i] );
+  }
+}
+
+
 // generate random seed
 int getSeed ( char *randomBinStr ) {
   unsigned char *random_bytes = random_bytes = malloc((size_t)5 + 1);
@@ -469,8 +539,11 @@ void stage2() {
     mpz_init( output[i] );
   }
 
-  mpz_t omega, rho, base, one, temp;
-  mpz_init( omega ); mpz_init( rho ); mpz_init( base ); mpz_init( temp );
+  mpz_t omega0, rho0, omega1, rho1, base, one, temp, x_m0, x_m1;
+  mpz_t a1, a2, b1, b2;
+  mpz_init( a1 ); mpz_init( a2 ); mpz_init( b1 ); mpz_init( b2 );
+  mpz_init( omega0 ); mpz_init( rho0 ); mpz_init( omega1 ); mpz_init( rho1 );
+  mpz_init( base ); mpz_init( temp ); mpz_init( x_m0 ); mpz_init( x_m1 );
   mpz_init2( one, 1024 );
 
   mpz_set_ui( one, 1 );
@@ -481,18 +554,29 @@ void stage2() {
   while ( inputAvailable == INPUT_YES ) {
 
     // precompute omega and rho
-    zn_mont_rho_sq( rho, rop[0] );
-    zn_mont_omega( omega, rop[0], base );
+    zn_mont_rho_sq( rho0, rop[2] );
+    zn_mont_omega( omega0, rop[2], base );
+    zn_mont_rho_sq( rho1, rop[3] );
+    zn_mont_omega( omega1, rop[3], base );
+
+    // get x in Montgomery
+    zn_mont_mul( x_m0, rop[8], rho0, rop[2], base, omega0 );
+    zn_mont_mul( x_m1, rop[8], rho1, rop[3], base, omega1 );
 
     // use CRT to decrypt message
     //   calculate first part
     // mpz_powm ( output[0], rop[8], rop[4], rop[2] );
     // binExp = mpz_get_str (binExp, 2, rop[4]);
-      // slidingWindow ( output[0], rop[8], binExp0, rop[2] );
+      slidingWindowNOMO ( output[0], rop[8], binExp0, rop[2] );
+    // slidingWindow ( temp, x_m0, binExp0, rop[2], omega0, base, one, rho0 );
+    // zn_mont_mul( output[0], temp, one, rop[2], base, omega0 );
+
     //   calculate second part
     // mpz_powm ( output[1], rop[8], rop[5], rop[3] );
     // binExp = mpz_get_str (binExp, 2, rop[5]);
-      // slidingWindow ( output[1], rop[8], binExp1, rop[3] );
+      slidingWindowNOMO ( output[1], rop[8], binExp1, rop[3] );
+    // slidingWindow ( temp, x_m1, binExp1, rop[3], omega1, base, one, rho1 );
+    // zn_mont_mul( output[1], temp, one, rop[3], base, omega1 );
 
     //   check which part is bigger
     comparison = mpz_cmp ( output[0], output[1] );
@@ -523,7 +607,6 @@ void stage2() {
       mpz_add( output[2], output[2], output[1] );
 
     } else { // comparison < 0 | op0 < op1
-      //  IS IT REALLY NEEDED ??????????????????????????????????????????????????
       // op1 - op0
       mpz_sub (output[2], output[1], output[0]);
       // multi
@@ -537,9 +620,8 @@ void stage2() {
       mpz_add( output[2], output[2], output[0] );
     }
 
-    // convert to hex back again | NOT SAFE ????????????????????????M+ NULL ????
+    // convert to hex back again
     hexOut = mpz_get_str (hexOut, 16, output[2]);
-    // gmp_printf( "%Zd \n", output );
     fprintf( stdout, "%s\n", hexOut );
 
     // check for another input
@@ -550,8 +632,11 @@ void stage2() {
     mpz_clear( rop[i] );
   } for (int i = 0; i < 3; ++i) {
     mpz_clear( output[i] );
-  } free( hexOut );
-  // free( binExp );
+  }
+  mpz_clear( omega0 ); mpz_clear( rho0 ); mpz_clear( omega1 ); mpz_clear( rho1 );
+  mpz_clear( base ); mpz_clear( temp ); mpz_clear( one ); mpz_clear( x_m0 );
+  mpz_clear( x_m1 );
+  free( hexOut ); // free( binExp );
 }
 
 /*
