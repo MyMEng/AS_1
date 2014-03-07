@@ -633,17 +633,16 @@ void stage3() {
   unsigned char random[size];
   char binExp[(IN_BUFF_SIZE-1)*4 + 1];
   binExp[(IN_BUFF_SIZE-1)*4] = '\0';
+
   int feedback = getSeed( size, seed );
   // check whether acquired randomness
-  if ( feedback != RDRAND_SUCCESS ) {
+  if ( feedback != RDRAND_SUCCESS )
     fprintf( stderr, "Not enough randomness in CPU!\n");
-  }
-  // seed SSL with randomness from CPU
+  // seed SSL with randomness from Intel's CPU
   RAND_seed( seed, size );
   feedback = RAND_status();
-  if ( feedback != 1 ) {
+  if ( feedback != 1 )
     fprintf(stderr, "SSL has been seeded with too little data.\n" );
-  }
 
   // for 5-tuple
   int inputAvailable = readTuple( n, rop, -1, NULL, -2, NULL );
@@ -660,6 +659,7 @@ void stage3() {
     // generate ephemeral key 'y' in range 1 -- (q-1) | (equivalent to rop[1]-1)
     //   if random to big generate new one
     do {
+      // get randomness from SSL
       feedback = RAND_bytes( random, size );
       if ( feedback != 1 ) {
         fprintf(stderr, "Not enough randomness for next number.\n" );
