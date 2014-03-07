@@ -12,7 +12,6 @@ void readHexToBin ( char *hex, char *bin ) {
   int i = 0;
   // each character in hex becomes 4 characters in bin
   while( !( hex[i] == '\0' || hex[i] =='\n' ) ) {
-  // for ( int i = 0; hex[i+1] != '\0'; ++i ) {
     if (hex[i] >= '0' && hex[i] <= '9') {
       temp = hexBin[ hex[i] - '0' ];
     } else if ( hex[i] >= 'A' && hex[i] <= 'F' ) {
@@ -92,7 +91,7 @@ void readIn ( mpz_t rop, const char *inputStr, int base ) {
 // read n-tuple | together with binary representations of exponents
 int readTuple ( const int n, mpz_t *reader, int ex1, char *exp1, int ex2, char *exp2 ) {
   // set the buffer for input for 256 characters + new line character
-  // remember n-tuple
+  //   remember n-tuple
   char readBuffer[n][IN_BUFF_SIZE];
   // feedback from reader
   int feedback;
@@ -191,7 +190,7 @@ void zn_mont_mul ( mpz_t output, mpz_t x, mpz_t y, mpz_t N, mpz_t base, mpz_t om
     mpz_mul( u, u, N );
     mpz_add( output, output, u );
     // define u as y_i * x
-    //   put y_i into u
+    // put y_i into u
     mpz_set_ui ( u, y_i[i] );
     mpz_mul( u, u, x );
     mpz_add( output, output, u );
@@ -270,7 +269,7 @@ void zn_mont_exp ( mpz_t result, mpz_t xi, char *exp, mpz_t N, mpz_t base, mpz_t
 }
 
 
-// implementation of 2k-ary-slide-1exp
+// implementation of 2k-ary-slide-1exp with use of Montgomery Multiplication
 void slidingWindow ( mpz_t result, mpz_t base, char *exp, mpz_t mod,
   mpz_t omega, mpz_t b, mpz_t one, mpz_t rho ) {
 
@@ -284,9 +283,7 @@ void slidingWindow ( mpz_t result, mpz_t base, char *exp, mpz_t mod,
   mpz_t temp; mpz_init( temp );
   mpz_t temp1; mpz_init( temp1 );
 
-  // lookup table
-  //   base multiplier
-  // mpz_powm_ui( b_sq, base, 2, mod );
+  // lookup table and base multiplier
   mpz_set(temp1, base);
   zn_mont_mul ( temp, base, temp1, mod, b, omega );  
 
@@ -297,15 +294,11 @@ void slidingWindow ( mpz_t result, mpz_t base, char *exp, mpz_t mod,
   for ( int i = 1; i < ind/2; ++i ) {
     mpz_init( lookup[i] );
     // precomputed lookup table
-    // mpz_powm_ui ( lookup[i], base, (2*i+1), mod );
-    // mpz_mul( lookup[i], lookup[i-1], b_sq );
-    // mpz_mod( lookup[i], lookup[i], mod );
     zn_mont_mul ( lookup[i], lookup[i-1], temp, mod, b, omega );
   }
 
   // initialize 'result' to identity element a.k.a. 1
   //   also must be in Montgomery
-  // mpz_set_ui ( result, 1 );
   zn_mont_mul( result, one, rho, mod, b, omega );
 
   // main loop
@@ -331,9 +324,7 @@ void slidingWindow ( mpz_t result, mpz_t base, char *exp, mpz_t mod,
       u = strtol( buffer, NULL, 2 );
     }
 
-    // mpz_powm_ui ( result, result, (int)pow(2, (i-l+1)), mod );
     for ( int n = 0; n < i-l+1; ++n ) {
-      // mpz_powm_ui ( result, result, 2, mod );
       //   MONTGOMERY --- square it
       mpz_set(temp1, result);
       zn_mont_mul ( temp, result, temp1, mod, b, omega );
@@ -341,8 +332,6 @@ void slidingWindow ( mpz_t result, mpz_t base, char *exp, mpz_t mod,
     }
 
     if ( u != 0 ) {
-      // mpz_mul ( result, result, lookup[ (int)floor((u-1)/2) ] );
-      // mpz_mod ( result, result, mod );
       // MONTGOMERY --- result mod n
       zn_mont_mul ( temp, result, lookup[ (int)floor((u-1)/2) ], mod, b, omega );
       mpz_set( result, temp );
@@ -374,7 +363,6 @@ void slidingWindowNOMO ( mpz_t result, mpz_t base, char *exp, mpz_t mod ) {
   for ( int i = 1; i < ind/2; ++i ) {
     mpz_init( lookup[i] );
     // precomputed lookup table
-    // mpz_powm_ui ( lookup[i], base, (2*i+1), mod );
     mpz_mul( lookup[i], lookup[i-1], b_sq );
     mpz_mod( lookup[i], lookup[i], mod );
   }
@@ -404,7 +392,6 @@ void slidingWindowNOMO ( mpz_t result, mpz_t base, char *exp, mpz_t mod ) {
       u = strtol( buffer, NULL, 2 );
     }
 
-    // mpz_powm_ui ( result, result, (int)pow(2, (i-l+1)), mod );
     for ( int n = 0; n < i-l+1; ++n ) {
       // Montgomery's Ladder --- side channel attacks
       mpz_mul( b_sq, result, b_sq );
@@ -429,11 +416,8 @@ void slidingWindowNOMO ( mpz_t result, mpz_t base, char *exp, mpz_t mod ) {
 }
 
 
-// generate random seed
+// generate random seed using Intel's Bull Run
 int getSeed ( unsigned int bytes, unsigned char *randomBinStr ) {
-
-  // unsigned int bytes = 128;
-  // unsigned char seed[bytes];
   return rdrand_get_bytes( bytes, randomBinStr );
 }
 
@@ -457,7 +441,6 @@ void stage1() {
 
   // binary representation of exponent
   char binExp[4*(IN_BUFF_SIZE-1) + 1];
-  // char *binExp = NULL;
 
   mpz_t rop[n];
   for (int i = 0; i < n; ++i) {
@@ -484,8 +467,6 @@ void stage1() {
     zn_mont_mul( x_m, rop[2], rho, rop[0], base, omega );
 
     // raise to the power
-    // mpz_powm ( output, rop[2], rop[1], rop[0] );
-    // binExp = mpz_get_str (binExp, 2, rop[1]);
     slidingWindow( output, x_m, binExp, rop[0], omega, base, one, rho );
 
     // get back from Montgomery representation
@@ -504,7 +485,7 @@ void stage1() {
   }
   mpz_clear( omega ); mpz_clear( rho ); mpz_clear( base ); mpz_clear( output );
   mpz_clear( one ); mpz_clear( temp ); mpz_clear( x_m );
-  free( hexOut ); // free ( binExp );
+  free( hexOut );
 }
 
 /*
@@ -792,7 +773,6 @@ void stage4() {
   char *hexOut = NULL;
 
   // binary representation of exponent
-  // char binExp[4*(IN_BUFF_SIZE-1) + 1];
   char *binExp = NULL;
 
   mpz_t rop[n];
@@ -815,21 +795,18 @@ void stage4() {
     // precompute omega and rho
     zn_mont_rho_sq( rho, rop[0] );
     zn_mont_omega( omega, rop[0], base );
-    // get x in Montgomery
+    // get x and y in Montgomery
     zn_mont_mul( x_m, rop[4], rho, rop[0], base, omega );
     zn_mont_mul( y_m, rop[5], rho, rop[0], base, omega );
 
     // calculate shared secret --- avoid division | calculate (p-1)-x as exp
     mpz_sub_ui( output, rop[0], 1 );
     mpz_sub ( output, output, rop[3]);
-    // mpz_powm ( output, rop[4], output, rop[0] );
+
     binExp = mpz_get_str ( binExp, 2, output );
-    // slidingWindow( output, rop[4], binExp, rop[0] );
     slidingWindow( temp, x_m, binExp, rop[0], omega, base, one, rho );
 
     // decrypt
-    // mpz_mul ( output, output, rop[5] );
-    // mpz_mod ( output, output, rop[0] );
     zn_mont_mul( output, temp, y_m, rop[0], base, omega );
 
     // get back from Montgomery form
@@ -879,22 +856,18 @@ int main( int argc, char* argv[] ) {
       printf( "%x", seed[i] );
     } printf("\nFeedback: %d\n", feedback);
 
-  char binary[1025];
-  binary[1024] = '\0';
-  // now bianry representation
-  for ( int i = 0; i < size; ++i ) {
-    for ( int j = 7; j >= 0; --j ) {
-      printf("%x", (seed[i]>>j)&1  );
-      binary[i*8 + 7-j] =  (char) ( ( (int)'0' ) + ((seed[i]>>j)&1));
+    char binary[1025];
+    binary[1024] = '\0';
+    // now bianry representation
+    for ( int i = 0; i < size; ++i ) {
+      for ( int j = 7; j >= 0; --j ) {
+        printf("%x", (seed[i]>>j)&1  );
+        binary[i*8 + 7-j] =  (char) ( ( (int)'0' ) + ((seed[i]>>j)&1));
+      }
     }
+    printf("\n%s\n", binary);
   }
-  printf("\n%s\n", binary);
-  
-
-  }
-
   else if( !strcmp( argv[ 1 ], "test" ) ) {
-
     // x, N
     int n = 2;
 
