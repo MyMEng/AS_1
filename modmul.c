@@ -40,7 +40,6 @@ void readHexToBin ( char *hex, char *bin ) {
 
   // append \0 at the end
   bin[end+1] = '\0';
-  // clean the rest of string ??????????????????????????????????????????????????
 }
 
 // read in line of input with restriction to 256 characters
@@ -100,7 +99,7 @@ int readTuple ( const int n, mpz_t *reader, int ex1, char *exp1, int ex2, char *
 
   for ( int i = 0; i < n; ++i ) {
 
-    feedback = readLine ( readBuffer[i], sizeof ( readBuffer[i] ) ); // added [i] in sizeof
+    feedback = readLine ( readBuffer[i], sizeof ( readBuffer[i] ) );
 
     if ( feedback == INPUT_NO ) {
       // Finish reading
@@ -130,7 +129,6 @@ int readTuple ( const int n, mpz_t *reader, int ex1, char *exp1, int ex2, char *
 }
 
 
-
 // MONTGOMERY
 void zn_mont_rho_sq ( mpz_t output, mpz_t modulus ) {
   // initialize to 1
@@ -158,12 +156,11 @@ void zn_mont_omega ( mpz_t output, mpz_t modulus, mpz_t base ) {
   mpz_mod( output, output, base );
 }
 
-void zn_mont_mul ( mpz_t o, mpz_t x, mpz_t y, mpz_t N, mpz_t base, mpz_t omega ) {
+void zn_mont_mul ( mpz_t output, mpz_t x, mpz_t y, mpz_t N, mpz_t base, mpz_t omega ) {
   // initialize to 0
-  mpz_t output;
-  mpz_init( output );
   mpz_set_ui ( output, 0 );
   long int l_N = mpz_size ( N );
+
   // initialize temporary variable
   mpz_t u;
   mpz_init( u );
@@ -206,12 +203,10 @@ void zn_mont_mul ( mpz_t o, mpz_t x, mpz_t y, mpz_t N, mpz_t base, mpz_t omega )
     mpz_sub( output, output, N );
   }
 
-  mpz_set( o, output );
   mpz_clear( u );
-  mpz_clear( output );
 }
 
-// do not use --- testing purpose
+// do not use --- testing purpose --- development version
 void zn_mont_red ( mpz_t output, mpz_t t, mpz_t N, mpz_t base, mpz_t omega ) {
   // helper variable
   mpz_t u;
@@ -251,7 +246,7 @@ void zn_mont_red ( mpz_t output, mpz_t t, mpz_t N, mpz_t base, mpz_t omega ) {
   mpz_clear( v );
 }
 
-// do not use --- testing purpose
+// do not use --- testing purpose --- development version
 void zn_mont_exp ( mpz_t result, mpz_t xi, char *exp, mpz_t N, mpz_t base, mpz_t rho_sq, mpz_t omega ) {
   mpz_t t, x, one, temp;
 
@@ -275,11 +270,10 @@ void zn_mont_exp ( mpz_t result, mpz_t xi, char *exp, mpz_t N, mpz_t base, mpz_t
 }
 
 
-
-
 // implementation of 2k-ary-slide-1exp
 void slidingWindow ( mpz_t result, mpz_t base, char *exp, mpz_t mod,
   mpz_t omega, mpz_t b, mpz_t one, mpz_t rho ) {
+
   // string buffer for bin to int
   char buffer[WINDOW_SIZE];
 
@@ -292,28 +286,27 @@ void slidingWindow ( mpz_t result, mpz_t base, char *exp, mpz_t mod,
 
   // lookup table
   //   base multiplier
-  mpz_t b_sq; mpz_init( b_sq );
   // mpz_powm_ui( b_sq, base, 2, mod );
   mpz_set(temp1, base);
-  zn_mont_mul ( b_sq, base, temp1, mod, b, omega );  
+  zn_mont_mul ( temp, base, temp1, mod, b, omega );  
 
   // do first step outside the loop
   mpz_init( lookup[0] );
   mpz_set( lookup[0], base );
+
   for ( int i = 1; i < ind/2; ++i ) {
     mpz_init( lookup[i] );
     // precomputed lookup table
     // mpz_powm_ui ( lookup[i], base, (2*i+1), mod );
     // mpz_mul( lookup[i], lookup[i-1], b_sq );
     // mpz_mod( lookup[i], lookup[i], mod );
-    zn_mont_mul ( lookup[i], lookup[i-1], b_sq, mod, b, omega );
+    zn_mont_mul ( lookup[i], lookup[i-1], temp, mod, b, omega );
   }
-  mpz_clear( b_sq );
+
   // initialize 'result' to identity element a.k.a. 1
-  // also must be in Montgomery
+  //   also must be in Montgomery
   // mpz_set_ui ( result, 1 );
   zn_mont_mul( result, one, rho, mod, b, omega );
-
 
   // main loop
   int l = 0;
@@ -331,19 +324,19 @@ void slidingWindow ( mpz_t result, mpz_t base, char *exp, mpz_t mod,
       while ( exp[beginning -l] == '0' ) {
         ++l;
       }
-      // must change sub set of l from string to integer
+      // must change subset of l from string to integer
       memcpy( buffer, &exp[beginning-i], i-l+1 );
       buffer[(i-l)+1] = '\0';
       // binary number in string to int
       u = strtol( buffer, NULL, 2 );
     }
 
-    // Montgomery's Ladder to defend against side-channel attacks ??
+    // Montgomery's Ladder to defend against side-channel attacks ??????????????
+
     // mpz_powm_ui ( result, result, (int)pow(2, (i-l+1)), mod );
     for ( int n = 0; n < i-l+1; ++n ) {
       // mpz_powm_ui ( result, result, 2, mod );
-      //MONTGOMERY
-      // square it
+      //   MONTGOMERY --- square it
       mpz_set(temp1, result);
       zn_mont_mul ( temp, result, temp1, mod, b, omega );
       mpz_set(result, temp);
@@ -351,9 +344,8 @@ void slidingWindow ( mpz_t result, mpz_t base, char *exp, mpz_t mod,
 
     if ( u != 0 ) {
       // mpz_mul ( result, result, lookup[ (int)floor((u-1)/2) ] );
-      // result mod n
       // mpz_mod ( result, result, mod );
-      // MONTGOMERY
+      // MONTGOMERY --- result mod n
       zn_mont_mul ( temp, result, lookup[ (int)floor((u-1)/2) ], mod, b, omega );
       mpz_set( result, temp );
     }
@@ -367,13 +359,11 @@ void slidingWindow ( mpz_t result, mpz_t base, char *exp, mpz_t mod,
 
 // generate random seed
 int getSeed ( char *randomBinStr ) {
-
   unsigned char *random_bytes = random_bytes = malloc((size_t)5 + 1);
   RAND_bytes(random_bytes, 5);
   *(random_bytes + 5) = '\0';
   fprintf(stderr, "%s\n", random_bytes);
   return 0;
-
 }
 
 
@@ -402,30 +392,27 @@ void stage1() {
   for (int i = 0; i < n; ++i) {
     mpz_init( rop[i] );
   }
-  mpz_t output;
-  mpz_init2( output, 1024 );
+  
+  mpz_t omega, rho, base, x_m, one, output, temp;
+  mpz_init( omega ); mpz_init( rho ); mpz_init( base ); mpz_init( x_m );
+  mpz_init( temp ); mpz_init( output );
+  mpz_init2( one, 1024 );
 
-  mpz_t omega, rho, base, base_m, x_m, one;
-  mpz_init( omega ); mpz_init( rho ); mpz_init2( base, 1024 ); mpz_init2( base_m, 1024 );
-  mpz_init2( x_m, 1024 ); mpz_init2( one, 1024 );
   mpz_set_ui( one, 1 );
   mpz_ui_pow_ui( base, 2, mp_bits_per_limb );
 
-  mpz_t temp; mpz_init2( temp, 1024 );
-
   // for 3-tuple --- N, e, m
+  //   last 4 parameters define which one need to be change into binary string
   int inputAvailable = readTuple( n, rop, 1, binExp, -1, NULL );
-  // 1 is parameter which defines which one is exponent
   while ( inputAvailable == INPUT_YES ) {
 
     // precompute omega and rho
     zn_mont_rho_sq( rho, rop[0] );
     zn_mont_omega( omega, rop[0], base );
-    // get base and x in montgomery
+    // get base and x in Montgomery
     zn_mont_mul( x_m, rop[2], rho, rop[0], base, omega );
 
-
-    // raise to power
+    // raise to the power
     // mpz_powm ( output, rop[2], rop[1], rop[0] );
     // binExp = mpz_get_str (binExp, 2, rop[1]);
     slidingWindow( output, x_m, binExp, rop[0], omega, base, one, rho );
@@ -433,7 +420,7 @@ void stage1() {
     // get back from Montgomery representation
     zn_mont_mul( temp, output, one, rop[0], base, omega );
 
-    // convert to hex back again | NOT SAFE ????????????????????????M+ NULL ??
+    // convert to hex back again
     hexOut = mpz_get_str (hexOut, INPUT_FORMAT, temp);
     fprintf( stdout, "%s\n", hexOut );
 
@@ -443,11 +430,10 @@ void stage1() {
 
   for ( int i = 0; i < n; ++i ) {
     mpz_clear( rop[i] );
-  } mpz_clear( output ); free( hexOut );
-  mpz_clear( omega ); mpz_clear( rho ); mpz_clear( base ); mpz_clear( base_m );
-  mpz_clear( one );
-  mpz_clear( temp );
-  // free ( binExp );
+  }
+  mpz_clear( omega ); mpz_clear( rho ); mpz_clear( base ); mpz_clear( output );
+  mpz_clear( one ); mpz_clear( temp ); mpz_clear( x_m );
+  free( hexOut ); // free ( binExp );
 }
 
 /*
