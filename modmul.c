@@ -583,18 +583,33 @@ void stage3() {
   for (int i = 0; i < 2; ++i) {
     mpz_init( output[i] );
   }
-  mpz_t y; mpz_init( y );
-  gmp_randstate_t randomState;
+
+  mpz_t omega, rho, base, x_m, y_m, z_m, one, temp;
+  mpz_init( omega ); mpz_init( rho ); mpz_init( base ); mpz_init( x_m );
+  mpz_init( temp ); mpz_init( y_m ); mpz_init( z_m );
+  mpz_init2( one, 1024 );
+
+  mpz_set_ui( one, 1 );
+  mpz_ui_pow_ui( base, 2, mp_bits_per_limb );
+
   // char randomState[(IN_BUFF_SIZE-1)*4 + 1];
+  mpz_t y; mpz_init( y ); gmp_randstate_t randomState;
 
   // for 5-tuple
   int inputAvailable = readTuple( n, rop, -1, NULL, -2, NULL );
   while ( inputAvailable == INPUT_YES ) {
 
+    // precompute omega and rho
+    zn_mont_rho_sq( rho, rop[0] );
+    zn_mont_omega( omega, rop[0], base );
+    // get x in Montgomery
+    zn_mont_mul( x_m, rop[2], rho, rop[0], base, omega );
+    zn_mont_mul( y_m, rop[3], rho, rop[0], base, omega );
+    zn_mont_mul( z_m, rop[4], rho, rop[0], base, omega );
+
     // generate ephemeral key 'y' in range 1 --- q-1  equivalent to(rop[1]-1)
     // mpz_set_ui ( y, 1 ); // testing purpose
     gmp_randinit_default ( randomState );
-
     // if random to big generate new one
     mpz_urandomm ( y, randomState, rop[1] );
 
@@ -603,18 +618,26 @@ void stage3() {
     // compute first part of cipher
     // mpz_powm ( output[0], rop[2], y, rop[0] );
     binExp = mpz_get_str (binExp, 2, y);
-      // slidingWindow ( output[0], rop[2], binExp, rop[0] );
+    // slidingWindow ( output[0], rop[2], binExp, rop[0] );
+    slidingWindow ( temp, x_m, binExp, rop[0], omega, base, one, rho );
+
+    // convert back --- won't be needed any more
+    zn_mont_mul( output[0], temp, one, rop[0], base, omega );
 
     // prepare base for second component
     // mpz_powm ( output[1], rop[3], y, rop[0] );
-      // slidingWindow ( output[1], rop[3], binExp, rop[0] );
+    // slidingWindow ( output[1], rop[3], binExp, rop[0] );
+    slidingWindow ( output[1], y_m, binExp, rop[0], omega, base, one, rho );
 
     // calculate encryption
-    mpz_mul ( output[1], rop[4], output[1] );
-    mpz_mod( output[1], output[1], rop[0] );
+    // mpz_mul ( output[1], rop[4], output[1] );
+    // mpz_mod( output[1], output[1], rop[0] );
+    zn_mont_mul( temp, output[1], z_m, rop[0], base, omega );
 
-    // gmp_printf( "%Zd \n", output );
-    // convert to hex back again | NOT SAFE ????????????????????????M+ NULL ??
+    // convert back --- won't be needed any more
+    zn_mont_mul( output[1], temp, one, rop[0], base, omega );
+
+    // convert to hex back again
     for (int i = 0; i < 2; ++i) {
       hexOut = mpz_get_str (hexOut, INPUT_FORMAT, output[i]);
       fprintf( stdout, "%s\n", hexOut );
@@ -628,7 +651,11 @@ void stage3() {
     mpz_clear( rop[i] );
   } for (int i = 0; i < 2; ++i) {
     mpz_clear( output[i] );
-  }  mpz_clear( y ); gmp_randclear( randomState );
+  }
+  mpz_clear( omega ); mpz_clear( rho ); mpz_clear( base ); mpz_clear( x_m );
+  mpz_clear( temp ); mpz_clear( y_m ); mpz_clear( z_m ); mpz_clear( one );
+  mpz_clear( y );
+  gmp_randclear( randomState );
   free( hexOut ); free( binExp ); 
 }
 
