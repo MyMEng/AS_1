@@ -9,9 +9,8 @@
 
 #include   <math.h>
 
-// #include  <fcntl.h>
+#include "rdrand.h"
 #include <openssl/rand.h>
- #include "rdrand.h"
 
 #include    <gmp.h>
 

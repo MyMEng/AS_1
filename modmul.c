@@ -432,15 +432,7 @@ int getSeed ( unsigned int bytes, unsigned char *randomBinStr ) {
 
   // unsigned int bytes = 128;
   // unsigned char seed[bytes];
-  int feedback = rdrand_get_bytes( bytes, randomBinStr );
-
-  return feedback;
-
-  unsigned char *random_bytes = random_bytes = malloc((size_t)5 + 1);
-  RAND_bytes(random_bytes, 5);
-  *(random_bytes + 5) = '\0';
-  fprintf(stderr, "%s\n", random_bytes);
-  return 0;
+  return rdrand_get_bytes( bytes, randomBinStr );
 }
 
 
@@ -665,7 +657,7 @@ void stage3() {
 
   // binary representation of exponent
   // char binExp[4*(IN_BUFF_SIZE-1) + 1];
-  char *binExp = NULL;
+  // char *binExp = NULL;
 
   mpz_t rop[n];
   for (int i = 0; i < n; ++i) {
@@ -684,8 +676,25 @@ void stage3() {
   mpz_set_ui( one, 1 );
   mpz_ui_pow_ui( base, 2, mp_bits_per_limb );
 
-  // char randomState[(IN_BUFF_SIZE-1)*4 + 1];
-  mpz_t y; mpz_init( y ); gmp_randstate_t randomState;
+  // Get random seed
+  unsigned int size = 128;
+  unsigned char seed[size];
+  unsigned char random[size];
+  char binExp[(IN_BUFF_SIZE-1)*4 + 1];
+  binExp[(IN_BUFF_SIZE-1)*4] = '\0';
+  int feedback = getSeed( size, seed );
+  // check whether acquired randomness
+  if ( feedback != RDRAND_SUCCESS ) {
+    fprintf( stderr, "Not enough randomness in CPU!\n");
+  }
+
+  // seed SSL with randomness from CPU
+  RAND_seed( seed, size );
+  feedback = RAND_status();
+  if ( feedback != 1 ) {
+    fprintf(stderr, "SSL has been seeded with too little data.\n" );
+  }
+  // mpz_t y; mpz_init( y ); gmp_randstate_t randomState;
 
   // for 5-tuple
   int inputAvailable = readTuple( n, rop, -1, NULL, -2, NULL );
@@ -701,15 +710,26 @@ void stage3() {
 
     // generate ephemeral key 'y' in range 1 --- q-1  equivalent to(rop[1]-1)
     // mpz_set_ui ( y, 1 ); // testing purpose
-    gmp_randinit_default ( randomState );
+    // gmp_randinit_default ( randomState );
     // if random to big generate new one
-    mpz_urandomm ( y, randomState, rop[1] );
+    // mpz_urandomm ( y, randomState, rop[1] );
+    // binExp = mpz_get_str (binExp, 2, y);
+    //   get randomness from given seed
+    feedback = RAND_bytes( random, size );
+    if ( feedback != 1 ) {
+      fprintf(stderr, "Not enough randomness for next number.\n" );
+    }
+    for ( int i = 0; i < size; ++i ) {
+      for ( int j = 7; j >= 0; --j ) {
+        binExp[i*8 + 7-j] =  (char) ( ( (int)'0' ) + ((random[i]>>j)&1));
+      }
+    // } printf("\n\n%s\n\n", binExp);
+    // binExp = randomState;
 
     // converts his secret message m, into an element m, of G
 
     // compute first part of cipher
     // mpz_powm ( output[0], rop[2], y, rop[0] );
-    binExp = mpz_get_str (binExp, 2, y);
     // slidingWindow ( output[0], rop[2], binExp, rop[0] );
     slidingWindow ( temp, x_m, binExp, rop[0], omega, base, one, rho );
 
@@ -746,9 +766,9 @@ void stage3() {
   }
   mpz_clear( omega ); mpz_clear( rho ); mpz_clear( base ); mpz_clear( x_m );
   mpz_clear( temp ); mpz_clear( y_m ); mpz_clear( z_m ); mpz_clear( one );
-  mpz_clear( y );
-  gmp_randclear( randomState );
-  free( hexOut ); free( binExp ); 
+  free( hexOut );
+  // free( binExp );
+  // mpz_clear( y ); gmp_randclear( randomState );
 }
 
 /*
