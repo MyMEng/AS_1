@@ -331,8 +331,6 @@ void slidingWindow ( mpz_t result, mpz_t base, char *exp, mpz_t mod,
       u = strtol( buffer, NULL, 2 );
     }
 
-    // Montgomery's Ladder to defend against side-channel attacks ??????????????
-
     // mpz_powm_ui ( result, result, (int)pow(2, (i-l+1)), mod );
     for ( int n = 0; n < i-l+1; ++n ) {
       // mpz_powm_ui ( result, result, 2, mod );
@@ -366,8 +364,6 @@ void slidingWindowNOMO ( mpz_t result, mpz_t base, char *exp, mpz_t mod ) {
   int ind = pow(2, WINDOW_SIZE);
   mpz_t lookup[ind/2];
 
-  // Montgomery's Ladder to defend against side-channel attacks
-
   // lookup table
   //   base multiplier
   mpz_t b_sq; mpz_init( b_sq );
@@ -382,7 +378,6 @@ void slidingWindowNOMO ( mpz_t result, mpz_t base, char *exp, mpz_t mod ) {
     mpz_mul( lookup[i], lookup[i-1], b_sq );
     mpz_mod( lookup[i], lookup[i], mod );
   }
-  mpz_clear( b_sq );
   // initialize 'result' to identity element a.k.a. 1
   mpz_set_d ( result, 1 );
 
@@ -411,19 +406,26 @@ void slidingWindowNOMO ( mpz_t result, mpz_t base, char *exp, mpz_t mod ) {
 
     // mpz_powm_ui ( result, result, (int)pow(2, (i-l+1)), mod );
     for ( int n = 0; n < i-l+1; ++n ) {
+      // Montgomery's Ladder --- side channel attacks
+      mpz_mul( b_sq, result, b_sq );
+      mpz_mod( b_sq, b_sq, mod );
+
       mpz_powm_ui ( result, result, 2, mod );
     }
     if ( u != 0 ) {
       mpz_mul ( result, result, lookup[ (int)floor((u-1)/2) ] );
       // result mod n
       mpz_mod ( result, result, mod );
+
+      // Montgomery's Ladder --- side channel attacks
+      mpz_powm_ui( b_sq, b_sq, 2, mod );
     }
     i = l - 1;
   }
 
   for ( int i = 0; i < ind/2; ++i ) {
     mpz_clear( lookup[i] );
-  }
+  } mpz_clear( b_sq );
 }
 
 
@@ -687,7 +689,6 @@ void stage3() {
   if ( feedback != RDRAND_SUCCESS ) {
     fprintf( stderr, "Not enough randomness in CPU!\n");
   }
-
   // seed SSL with randomness from CPU
   RAND_seed( seed, size );
   feedback = RAND_status();
@@ -695,6 +696,7 @@ void stage3() {
     fprintf(stderr, "SSL has been seeded with too little data.\n" );
   }
   // mpz_t y; mpz_init( y ); gmp_randstate_t randomState;
+
 
   // for 5-tuple
   int inputAvailable = readTuple( n, rop, -1, NULL, -2, NULL );
@@ -723,7 +725,8 @@ void stage3() {
       for ( int j = 7; j >= 0; --j ) {
         binExp[i*8 + 7-j] =  (char) ( ( (int)'0' ) + ((random[i]>>j)&1));
       }
-    // } printf("\n\n%s\n\n", binExp);
+    }
+    // printf("\n\n%s\n\n", binExp);
     // binExp = randomState;
 
     // converts his secret message m, into an element m, of G

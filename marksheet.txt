@@ -28,7 +28,11 @@ by the assignment description of course).  Let us know what third-party
 source code or resources you used (if any) so it's clear what's your work 
 and what isn't:
 
-[]
+[
+ * Parts of code available at 'wiki.openssl.org/index.php/Random_Numbers'
+   of OpenSSL (1.0.1) implementation which allows to use Intel Secure technology
+   were used.
+]
 
 -------------------------------------------------------------------------------
 
@@ -68,9 +72,11 @@ source code) should go here:
 
 [
 * Avoid to compute inverse in Stage 4 by simple mathematical workaround.
-* Own implementation of random number generator for Stage 3.
-* Montgomery's Ladder to prevent side-channel attacks in sliding window
-    multiplication.
+* Own implementation of random number generator for Stage 3. Seed from
+  Intel's RDRAND and random values from SSL cryptographically secure random
+  number generator.
+* In non-Montgomery-multiplication version of sliding window Montgomery's
+  Ladder is used to defend against side-channel attacks
 ]
 
 -------------------------------------------------------------------------------
