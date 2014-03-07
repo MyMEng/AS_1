@@ -510,7 +510,6 @@ void stage2() {
   // binary representation of exponent
   char binExp0[4*(IN_BUFF_SIZE-1) + 1];
   char binExp1[4*(IN_BUFF_SIZE-1) + 1];
-  // char *binExp = NULL;
 
   // GMP representation of numbers
   mpz_t rop[n];
@@ -522,8 +521,6 @@ void stage2() {
   }
 
   mpz_t omega0, rho0, omega1, rho1, base, one, temp, x_m0, x_m1;
-  mpz_t a1, a2, b1, b2;
-  mpz_init( a1 ); mpz_init( a2 ); mpz_init( b1 ); mpz_init( b2 );
   mpz_init( omega0 ); mpz_init( rho0 ); mpz_init( omega1 ); mpz_init( rho1 );
   mpz_init( base ); mpz_init( temp ); mpz_init( x_m0 ); mpz_init( x_m1 );
   mpz_init2( one, 1024 );
@@ -618,7 +615,7 @@ void stage2() {
   mpz_clear( omega0 ); mpz_clear( rho0 ); mpz_clear( omega1 ); mpz_clear( rho1 );
   mpz_clear( base ); mpz_clear( temp ); mpz_clear( one ); mpz_clear( x_m0 );
   mpz_clear( x_m1 );
-  free( hexOut ); // free( binExp );
+  free( hexOut );
 }
 
 /*
