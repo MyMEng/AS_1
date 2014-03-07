@@ -520,42 +520,15 @@ void stage2() {
     mpz_init( output[i] );
   }
 
-  mpz_t omega0, rho0, omega1, rho1, base, one, temp, x_m0, x_m1;
-  mpz_init( omega0 ); mpz_init( rho0 ); mpz_init( omega1 ); mpz_init( rho1 );
-  mpz_init( base ); mpz_init( temp ); mpz_init( x_m0 ); mpz_init( x_m1 );
-  mpz_init2( one, 1024 );
-
-  mpz_set_ui( one, 1 );
-  mpz_ui_pow_ui( base, 2, mp_bits_per_limb );
-
   // for 9-tuple --- N, d, p, q, d_p, d_q, i_p, i_q and c
   int inputAvailable = readTuple( n, rop, 4, binExp0, 5, binExp1 );
   while ( inputAvailable == INPUT_YES ) {
 
-    // precompute omega and rho
-    zn_mont_rho_sq( rho0, rop[2] );
-    zn_mont_omega( omega0, rop[2], base );
-    zn_mont_rho_sq( rho1, rop[3] );
-    zn_mont_omega( omega1, rop[3], base );
-
-    // get x in Montgomery
-    zn_mont_mul( x_m0, rop[8], rho0, rop[2], base, omega0 );
-    zn_mont_mul( x_m1, rop[8], rho1, rop[3], base, omega1 );
-
     // use CRT to decrypt message
     //   calculate first part
-    // mpz_powm ( output[0], rop[8], rop[4], rop[2] );
-    // binExp = mpz_get_str (binExp, 2, rop[4]);
-      slidingWindowNOMO ( output[0], rop[8], binExp0, rop[2] );
-    // slidingWindow ( temp, x_m0, binExp0, rop[2], omega0, base, one, rho0 );
-    // zn_mont_mul( output[0], temp, one, rop[2], base, omega0 );
-
+    slidingWindowNOMO ( output[0], rop[8], binExp0, rop[2] );
     //   calculate second part
-    // mpz_powm ( output[1], rop[8], rop[5], rop[3] );
-    // binExp = mpz_get_str (binExp, 2, rop[5]);
-      slidingWindowNOMO ( output[1], rop[8], binExp1, rop[3] );
-    // slidingWindow ( temp, x_m1, binExp1, rop[3], omega1, base, one, rho1 );
-    // zn_mont_mul( output[1], temp, one, rop[3], base, omega1 );
+    slidingWindowNOMO ( output[1], rop[8], binExp1, rop[3] );
 
     //   check which part is bigger
     comparison = mpz_cmp ( output[0], output[1] );
@@ -567,9 +540,9 @@ void stage2() {
       // mod
       mpz_mod ( output[2], output[2], rop[2]);
       // reconstruct message
-      //   multi
+      // multi
       mpz_mul ( output[2], output[2], rop[3] );
-      //   add
+      // add
       mpz_add( output[2], output[2], output[1] );
 
     } else if ( comparison == 0 ) { // op0 = op1
@@ -580,9 +553,9 @@ void stage2() {
       // mod
       mpz_mod ( output[2], output[2], rop[2]);
       // reconstruct message
-      //   multi
+      // multi
       mpz_mul ( output[2], output[2], rop[3] );
-      //   add
+      // add
       mpz_add( output[2], output[2], output[1] );
 
     } else { // comparison < 0 | op0 < op1
@@ -593,9 +566,9 @@ void stage2() {
       // mod
       mpz_mod ( output[2], output[2], rop[3]);
       // reconstruct message
-      //   multi
+      // multi
       mpz_mul ( output[2], output[2], rop[2] );
-      //   add
+      // add
       mpz_add( output[2], output[2], output[0] );
     }
 
@@ -611,11 +584,7 @@ void stage2() {
     mpz_clear( rop[i] );
   } for (int i = 0; i < 3; ++i) {
     mpz_clear( output[i] );
-  }
-  mpz_clear( omega0 ); mpz_clear( rho0 ); mpz_clear( omega1 ); mpz_clear( rho1 );
-  mpz_clear( base ); mpz_clear( temp ); mpz_clear( one ); mpz_clear( x_m0 );
-  mpz_clear( x_m1 );
-  free( hexOut );
+  } free( hexOut );
 }
 
 /*
